@@ -1,0 +1,12 @@
+{% load humanize %}<tr>
+  <td class="whitespace-nowrap font-medium"><a class="link link-hover link-primary" href="{% url 'findata:data' dataset.id %}?as_of={{ row.iso }}" title="See the rows of {{ row.date|date:'d-m-Y' }}">{{ row.date|date:"d-m-Y" }}</a></td>
+  <td class="text-right tabular-nums">{{ row.rows|intcomma }}</td>
+  <td>{{ row.by|default:"—" }}</td>
+  <td class="whitespace-nowrap">{{ row.when|date:"d-m-Y H:i"|default:"—" }}</td>
+  <td class="whitespace-nowrap text-right">
+    {% if can_upload %}
+      <a class="btn btn-ghost btn-xs" href="{% url 'findata:upload' dataset.id %}?as_of={{ row.iso }}" title="Upload a corrected file for {{ row.date|date:'d-m-Y' }}: it replaces this date">Replace</a>
+      <a class="btn btn-ghost btn-xs text-error" href="{% url 'findata:date_remove' dataset.id row.iso %}" title="Remove every row of {{ row.date|date:'d-m-Y' }} (you can undo it from History)">Remove</a>
+    {% endif %}
+  </td>
+</tr>

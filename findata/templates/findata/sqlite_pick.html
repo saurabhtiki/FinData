@@ -1,0 +1,33 @@
+{% extends base_template %}
+{% block title %}Pick a table · {{ dataset.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'findata:upload' dataset.id %}?tab=database" class="btn btn-ghost btn-sm mb-3" title="Pick a different file">← Different file</a>
+<div class="mx-auto max-w-2xl">
+  {% include "findata/partials/steps.html" with step=1 %}
+  <h1 class="text-2xl font-semibold tracking-tight">Pick what to read from {{ upload.file_name }}</h1>
+  <p class="mb-4 text-sm text-base-content/70">One table, or your own query, goes into {{ dataset.name }}.</p>
+  {% if error %}<div role="alert" class="alert alert-error alert-soft mb-4"><span>{{ error }}</span></div>{% endif %}
+  <form method="post" class="card border border-base-300 bg-base-100" x-data="{ busy: false, own: {{ own_query|yesno:'true,false' }} }" @submit="busy = true">
+    {% csrf_token %}
+    <div class="card-body">
+      <div class="flex gap-4 text-sm">
+        <label class="flex items-center gap-2" title="Read a whole table or view"><input type="radio" class="radio radio-sm" :checked="!own" @change="own = false"> A table</label>
+        <label class="flex items-center gap-2" title="Write one SELECT, e.g. to join two tables or read some rows only"><input type="radio" class="radio radio-sm" :checked="own" @change="own = true"> My own query</label>
+      </div>
+      <label x-show="!own" class="fieldset">
+        <span class="fieldset-legend">Table</span>
+        <select name="table" class="select w-full" :disabled="own" title="Tables and views in the file, with their row counts">
+          {% for item in tables %}<option value="{{ item.name }}" {% if item.name == chosen %}selected{% endif %}>{{ item.name }}{% if item.kind == "view" %} (view){% endif %} · {{ item.row_count }} rows · {{ item.columns|join:", "|truncatechars:60 }}</option>{% endfor %}
+        </select>
+      </label>
+      <label x-show="own" x-cloak class="fieldset">
+        <span class="fieldset-legend">Your query</span>
+        <textarea name="own_query" rows="4" class="textarea w-full font-mono text-sm" :disabled="!own" placeholder="SELECT * FROM ledgers WHERE active = 1" title="One SELECT only. The file is opened read-only.">{{ own_query }}</textarea>
+      </label>
+      <div class="card-actions mt-2 justify-end">
+        <button class="btn btn-primary" :disabled="busy"><span x-show="busy" class="loading loading-spinner loading-sm"></span>Next: match columns</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

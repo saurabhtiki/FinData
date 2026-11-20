@@ -1,0 +1,14 @@
+{% extends base_template %}
+{% block title %}{{ dataset.name }} · changes{% endblock %}
+{% block content %}
+{% include "findata/partials/dataset_header.html" %}
+{% if one_upload %}
+  <div role="alert" class="alert alert-soft {% if one_upload.status == 'undone' %}alert-warning{% else %}alert-info{% endif %} mb-3">
+    <span>Changes of <strong>{{ one_upload.file_name }}</strong>, saved {{ one_upload.confirmed_at|default:one_upload.created_at|date:"d-m-Y H:i" }}{% if one_upload.user %} by {{ one_upload.user }}{% endif %}: {{ one_upload.added }} new · {{ one_upload.changed }} changed · {{ one_upload.deleted }} deleted.
+    {% if one_upload.status == 'undone' %}<strong>It was undone{% if one_upload.undone_at %} on {{ one_upload.undone_at|date:"d-m-Y H:i" }}{% endif %}{% if one_upload.undone_by %} by {{ one_upload.undone_by }}{% endif %}</strong>, so these changes were reversed.{% endif %}</span>
+    <a class="btn btn-sm" href="{% url 'findata:changes' dataset.id %}" title="Show the changes of every upload">All uploads</a>
+  </div>
+{% endif %}
+<div x-data>{% include "findata/partials/changes_table.html" %}</div>
+{% include "findata/partials/row_history_dialog.html" %}
+{% endblock %}

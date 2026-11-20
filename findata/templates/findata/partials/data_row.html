@@ -1,0 +1,7 @@
+<tr>
+  {% for cell in row.cells %}<td class="{% if forloop.first %}dt-sticky {% endif %}{% if cell.right %}text-right tabular-nums {% endif %}max-w-72 truncate" data-dt-col="{{ cell.name }}">{% if cell.url %}<a class="link link-hover link-primary" href="{{ cell.url }}" title="{{ cell.tip }}">{{ cell.text }}</a>{% else %}<span title="{{ cell.text }}">{{ cell.text }}</span>{% endif %}</td>{% endfor %}
+  <td data-dt-col="_updated_at" class="whitespace-nowrap text-base-content/70" title="{{ row.changed_tip }}">{{ row.last_changed|date:"d-m-Y H:i" }}</td>
+  <td class="text-right"><button type="button" class="btn btn-ghost btn-xs" title="Everything that happened to this row: when it was added, each change (old → new) and who uploaded it"
+      hx-get="{% url 'findata:row_history' dataset.id %}?key={{ row.key_json|urlencode }}" hx-target="#findata-row-history-body" hx-swap="innerHTML" hx-push-url="false"
+      onclick="document.getElementById('findata-row-history').showModal()">History</button></td>
+</tr>

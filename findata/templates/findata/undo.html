@@ -1,0 +1,22 @@
+{% extends base_template %}
+{% load humanize %}
+{% block title %}Undo · {{ dataset.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'findata:history' dataset.id %}" class="btn btn-ghost btn-sm mb-3">← History</a>
+<div class="mx-auto max-w-2xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Undo {{ upload.file_name }}?</h1>
+  <p class="mb-4 text-sm text-base-content/70">Saved {{ upload.confirmed_at|date:"d-m-Y H:i" }}{% if upload.user %} by {{ upload.user }}{% endif %}. {{ dataset.name }} goes back to how it was before this upload:</p>
+  <ul class="mb-4 list-disc pl-6 text-sm">
+    <li><strong>{{ upload.added|intcomma }}</strong> row{{ upload.added|pluralize }} it added {{ upload.added|pluralize:"is,are" }} removed</li>
+    <li><strong>{{ upload.changed|intcomma }}</strong> changed row{{ upload.changed|pluralize }} get{{ upload.changed|pluralize:"s," }} the old values back</li>
+    <li><strong>{{ upload.deleted|intcomma }}</strong> deleted row{{ upload.deleted|pluralize }} {{ upload.deleted|pluralize:"is,are" }} put back</li>
+  </ul>
+  {% if problems %}
+    <div role="alert" class="alert alert-warning alert-soft"><ul class="list-disc pl-5 text-sm">{% for item in problems %}<li>{{ item }}</li>{% endfor %}</ul></div>
+  {% else %}
+    <form method="post" x-data="{ busy: false }" @submit="busy = true">{% csrf_token %}
+      <button class="btn btn-error" :disabled="busy" title="Undo this upload. The change log keeps a record of it."><span x-show="busy" class="loading loading-spinner loading-sm"></span>Undo this upload</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

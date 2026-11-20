@@ -1,0 +1,23 @@
+{% comment %}Top of every dataset page: name, Upload buttons and the tabs. Needs page_context().{% endcomment %}
+<a href="{% url 'findata:datasets' %}" class="btn btn-ghost btn-sm mb-2" title="Back to all datasets of {{ company.name }}">← Datasets</a>
+<div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+  <div class="min-w-0">
+    <p class="flex items-center gap-2 text-sm text-base-content/60">
+      <span>{{ company.name }}</span>
+      <span class="badge badge-sm badge-soft {% if dataset.kind == 'master' %}badge-primary{% elif dataset.kind == 'transaction' %}badge-secondary{% else %}badge-accent{% endif %}">{{ kind_label }}</span>
+      <code class="text-xs" title="Table in the database">{{ dataset.schema }}.{{ dataset.table_name }}</code>
+    </p>
+    <h1 class="text-2xl font-semibold tracking-tight">{{ dataset.name }}</h1>
+    {% if dataset.description %}<p class="max-w-2xl text-sm text-base-content/70">{{ dataset.description }}</p>{% endif %}
+  </div>
+  <div class="flex flex-wrap gap-2">
+    {% if can_upload and pull_again %}<a class="btn btn-secondary btn-soft" href="{% url 'findata:upload' dataset.id %}?tab=database&amp;again=1" title="Read the same table or query from the same database as last time: type the password, then preview">Pull again</a>{% endif %}
+    {% if can_upload %}<a class="btn btn-primary" href="{% url 'findata:upload' dataset.id %}" title="{% if dataset.is_snapshot %}Pick the As-of date, then upload a file or read from a database: it replaces that date only{% else %}Upload a CSV, Excel or JSON file, or read from a database: match columns, preview, then confirm{% endif %}">Upload</a>{% endif %}
+  </div>
+</div>
+<div role="tablist" class="tabs tabs-border mb-4 overflow-x-auto">
+  <a role="tab" class="tab{% if tab == 'data' %} tab-active{% endif %}" href="{% url 'findata:data' dataset.id %}" title="The saved rows, with a filter on every column" {% if tab == 'data' %}aria-selected="true"{% endif %}>Data</a>
+  <a role="tab" class="tab{% if tab == 'changes' %} tab-active{% endif %}" href="{% url 'findata:changes' dataset.id %}" title="Every change made by uploads: new, changed (old → new) and deleted rows" {% if tab == 'changes' %}aria-selected="true"{% endif %}>Changes</a>
+  <a role="tab" class="tab{% if tab == 'history' %} tab-active{% endif %}" href="{% url 'findata:history' dataset.id %}" title="Every upload, with Undo for the latest" {% if tab == 'history' %}aria-selected="true"{% endif %}>History</a>
+  {% if dataset.is_snapshot %}<a role="tab" class="tab{% if tab == 'dates' %} tab-active{% endif %}" href="{% url 'findata:dates' dataset.id %}" title="A calendar of the As-of dates loaded and the missing ones" {% if tab == 'dates' %}aria-selected="true"{% endif %}>Dates</a>{% endif %}
+</div>

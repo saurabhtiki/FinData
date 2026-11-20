@@ -1,0 +1,18 @@
+{% extends base_template %}
+{% load humanize %}
+{% block title %}Remove {{ as_of|date:"d-m-Y" }} · {{ dataset.name }}{% endblock %}
+{% block content %}
+<a href="{{ back }}" class="btn btn-ghost btn-sm mb-3">← Dates</a>
+<div class="mx-auto max-w-xl">
+  <h1 class="text-2xl font-semibold tracking-tight">Remove {{ as_of|date:"d-m-Y" }} from {{ dataset.name }}?</h1>
+  {% if rows %}
+    <p class="mb-4 text-sm text-base-content/70">All <strong>{{ rows|intcomma }}</strong> row{{ rows|pluralize }} of this As-of date {{ rows|pluralize:"is,are" }} removed. Other dates stay as they are. It is listed in History, where you can undo it.</p>
+    <form method="post" x-data="{ busy: false }" @submit="busy = true">{% csrf_token %}
+      <a href="{{ back }}" class="btn btn-ghost">Keep it</a>
+      <button class="btn btn-error" :disabled="busy" title="Remove every row of {{ as_of|date:'d-m-Y' }}"><span x-show="busy" class="loading loading-spinner loading-sm"></span>Remove {{ rows|intcomma }} row{{ rows|pluralize }}</button>
+    </form>
+  {% else %}
+    <div role="alert" class="alert alert-info alert-soft"><span>{{ dataset.name }} has no rows for {{ as_of|date:"d-m-Y" }}.</span></div>
+  {% endif %}
+</div>
+{% endblock %}

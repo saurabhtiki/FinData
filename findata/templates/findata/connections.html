@@ -1,0 +1,13 @@
+{% extends base_template %}
+{% block title %}Connections · {{ company.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'findata:datasets' %}" class="btn btn-ghost btn-sm mb-3">← Datasets</a>
+<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Database connections</h1>
+    <p class="max-w-2xl text-sm text-base-content/70">Servers {{ company.name }} can read from (read-only). Passwords are never saved: they are typed for each read.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'findata:connection_new' %}" title="Save a PostgreSQL or MySQL server to read from">+ New connection</a>
+</div>
+<div x-data>{% include "findata/partials/connections_table.html" %}</div>
+{% endblock %}

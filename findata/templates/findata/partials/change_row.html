@@ -1,0 +1,18 @@
+<tr{% if row.undone %} class="opacity-60"{% endif %}>
+  <td class="dt-sticky whitespace-nowrap" data-dt-col="at">{{ row.at|date:"d-m-Y H:i" }}</td>
+  <td data-dt-col="user">{{ row.user|default:"—" }}</td>
+  <td class="max-w-56 truncate" data-dt-col="upload_id"><a class="link link-hover" href="?upload={{ row.upload_id }}" title="Only the changes of {{ row.file }}">{{ row.file }}</a></td>
+  <td data-dt-col="action" class="whitespace-nowrap">
+    <span class="badge badge-sm badge-soft {% if row.action == 'added' %}badge-success{% elif row.action == 'changed' %}badge-warning{% else %}badge-error{% endif %}">{% if row.action == 'added' %}New{% elif row.action == 'changed' %}Changed{% else %}Deleted{% endif %}</span>
+    {% if row.undone %}<span class="badge badge-sm badge-neutral" title="{{ row.undone_tip }}">Undone</span>{% endif %}
+  </td>
+  <td data-dt-col="key_text" class="whitespace-nowrap"><button type="button" class="link link-hover link-primary font-medium" title="Everything that happened to this row"
+      hx-get="{% url 'findata:row_history' dataset.id %}?key={{ row.key_json|urlencode }}" hx-target="#findata-row-history-body" hx-swap="innerHTML" hx-push-url="false"
+      onclick="document.getElementById('findata-row-history').showModal()">{{ row.key_text }}</button></td>
+  {% if dataset.is_snapshot %}<td data-dt-col="as_of" class="whitespace-nowrap">{{ row.as_of|date:"d-m-Y" }}</td>{% endif %}
+  <td data-dt-col="detail" class="text-sm">
+    {% if row.detail.changed %}{% for item in row.detail.changed %}<span class="mr-3 inline-block"><span class="text-base-content/60">{{ item.label }}:</span> <span class="line-through decoration-error/60">{{ item.old }}</span> → <strong>{{ item.new }}</strong></span>{% endfor %}
+    {% elif row.action == 'changed' %}<span class="text-base-content/50">Only the key's spelling changed</span>
+    {% else %}<span class="block max-w-md truncate text-xs text-base-content/60" title="{% for item in row.detail.values %}{{ item.label }}: {{ item.new }}{% if not forloop.last %} · {% endif %}{% endfor %}">{% for item in row.detail.values|slice:":5" %}{{ item.label }} {{ item.new }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>{% endif %}
+  </td>
+</tr>

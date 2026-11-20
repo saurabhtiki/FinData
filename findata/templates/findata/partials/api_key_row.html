@@ -1,0 +1,16 @@
+<tr>
+  <td class="font-medium">{{ row.name }}</td>
+  <td>{{ row.rights }}</td>
+  <td><code class="text-xs" title="Only the start of the key is kept readable, to tell keys apart">{{ row.prefix }}…</code></td>
+  <td class="whitespace-nowrap" title="Made by {{ row.created_by|default:'—' }}">{{ row.created_at|date:"d-m-Y" }}{% if row.created_by %} · {{ row.created_by }}{% endif %}</td>
+  <td class="whitespace-nowrap">{{ row.last_used_at|date:"d-m-Y H:i"|default:"Never" }}</td>
+  <td class="whitespace-nowrap">{{ row.expires_on|date:"d-m-Y"|default:"—" }}</td>
+  <td><span class="badge badge-sm badge-soft {% if row.state == 'Works' %}badge-success{% else %}badge-neutral{% endif %}">{{ row.state }}</span></td>
+  <td class="whitespace-nowrap text-right">
+    {% if row.state != "Switched off" %}
+      <form method="post" action="{% url 'findata:api_key_off' row.id %}" onsubmit="return confirm('Switch off “{{ row.name|escapejs }}”? Calls with it are refused from now on. This can’t be undone.')">
+        {% csrf_token %}<button class="btn btn-ghost btn-xs text-error" title="Stop this key working, e.g. when it may have leaked">Switch off</button>
+      </form>
+    {% endif %}
+  </td>
+</tr>

@@ -1,0 +1,35 @@
+<h3 id="findata-row-history-title" class="pr-8 text-lg font-semibold">{{ dataset.name }} · {{ key_text }}{% if as_of %} <span class="font-normal text-base-content/60">· as of {{ as_of|date:"d-m-Y" }}</span>{% endif %}</h3>
+<p class="mb-3 text-sm text-base-content/70">Everything that happened to this row, oldest first.</p>
+{% if events %}
+<ul class="timeline timeline-vertical timeline-compact timeline-snap-icon">
+  {% for event in events %}
+  <li>
+    {% if not forloop.first %}<hr>{% endif %}
+    <div class="timeline-middle">
+      <span class="badge badge-xs {% if event.action == 'added' %}badge-success{% elif event.action == 'changed' %}badge-warning{% elif event.action == 'deleted' %}badge-error{% else %}badge-neutral{% endif %}" aria-hidden="true"></span>
+    </div>
+    <div class="timeline-end mb-4 w-full">
+      <div class="text-sm">
+        <strong>{% if event.action == 'added' %}Added{% elif event.action == 'changed' %}Changed{% elif event.action == 'deleted' %}Deleted{% else %}Undone{% endif %}</strong>
+        <span class="text-base-content/70">on {{ event.when|date:"d-m-Y H:i" }}{% if event.who %} by {{ event.who }}{% endif %}</span>
+        <a class="link link-hover text-xs text-base-content/60" href="{% url 'findata:changes' dataset.id %}?upload={{ event.upload_id }}" title="All changes of this upload">{% if event.action == 'undone' %}undo of {% endif %}{{ event.file }}</a>
+      </div>
+      {% if event.detail.changed %}
+        <ul class="mt-1 space-y-0.5 text-sm">
+          {% for item in event.detail.changed %}<li><span class="text-base-content/70">{{ item.label }}:</span> <span class="line-through decoration-error/60">{{ item.old }}</span> → <strong>{{ item.new }}</strong></li>{% endfor %}
+        </ul>
+      {% elif event.detail.values %}
+        <p class="mt-1 text-xs text-base-content/60">{% for item in event.detail.values|slice:":8" %}{{ item.label }} {{ item.new }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if event.detail.values|length > 8 %} …{% endif %}</p>
+      {% elif event.action == 'changed' %}
+        <p class="mt-1 text-xs text-base-content/60">Only spelling of the key or system values changed.</p>
+      {% elif event.action == 'undone' %}
+        <p class="mt-1 text-xs text-base-content/60">The change above was reversed.</p>
+      {% endif %}
+    </div>
+    {% if not forloop.last %}<hr>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div role="alert" class="alert alert-soft alert-info"><span>No changes are recorded for this row (it was saved before the change log started).</span></div>
+{% endif %}

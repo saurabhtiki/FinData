@@ -1,0 +1,42 @@
+{% extends base_template %}
+{% block title %}Datasets · {{ company.name }}{% endblock %}
+{% block content %}
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <p class="text-sm text-base-content/60">{{ company.name }} · schema <code class="text-xs">{{ company.schema }}</code></p>
+    <h1 class="text-2xl font-semibold tracking-tight">Datasets</h1>
+    <p class="mt-1 max-w-2xl text-sm text-base-content/70">The tables of your financial database: what columns each one has, its key, and which other dataset it links to.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a href="{% url 'findata:recent_uploads' %}" class="btn" title="Every upload into any dataset of {{ company.name }}, newest first">Recent uploads</a>
+    {% if api_on %}<a href="{% url 'findata:api_help' %}" class="btn" title="How another system sends rows to FinData or reads them: column names and ready-to-copy examples">API help</a>{% endif %}
+  {% if can_edit %}
+    {% if servers_on %}<a href="{% url 'findata:connections' %}" class="btn" title="Database servers this company reads from (no passwords are saved)">Connections</a>{% endif %}
+    {% if api_on %}<a href="{% url 'findata:api_keys' %}" class="btn" title="Keys other systems (e.g. a Tally sync script) use to send or read {{ company.name }}'s data">API keys</a>{% endif %}
+    <a href="{% url 'findata:new' %}" class="btn btn-primary" title="Define a new dataset: from a sample file, a copy, or from scratch">+ New dataset</a>
+  {% endif %}
+  </div>
+</div>
+<div class="mb-4 grid gap-3 sm:grid-cols-3">
+  {% for kind, help in kind_help.items %}
+    <div class="rounded-box border border-base-300 bg-base-100 p-3 text-sm">
+      <span class="badge badge-sm {% if kind == 'master' %}badge-primary{% elif kind == 'transaction' %}badge-secondary{% else %}badge-accent{% endif %} badge-soft">{% if kind == 'master' %}Master{% elif kind == 'transaction' %}Transaction{% else %}Periodic report{% endif %}</span>
+      <p class="mt-1 text-base-content/70">{{ help }}</p>
+    </div>
+  {% endfor %}
+</div>
+<div x-data>{% include "findata/partials/datasets_table.html" %}</div>
+<dialog id="findata-delete" class="modal" x-data="{ name: '', url: '', rows: 0 }" @findata-delete.window="name = $event.detail.name; url = $event.detail.url; rows = $event.detail.rows; $el.showModal()">
+  <div class="modal-box">
+    <h3 class="text-lg font-semibold">Delete <span x-text="name"></span>?</h3>
+    <p class="py-3 text-sm">The definition and its database table are removed.
+      <template x-if="rows > 0"><strong class="text-error">Its <span x-text="rows.toLocaleString()"></span> saved rows are deleted for good.</strong></template>
+    </p>
+    <div class="modal-action">
+      <form method="dialog"><button class="btn btn-ghost">Cancel</button></form>
+      <form method="post" :action="url">{% csrf_token %}<button class="btn btn-error">Delete</button></form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}

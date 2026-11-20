@@ -1,0 +1,7 @@
+{% extends base_template %}
+{% block title %}{{ dataset.name }} · uploads{% endblock %}
+{% block content %}
+{% include "findata/partials/dataset_header.html" %}
+<p class="mb-3 text-sm text-base-content/70">Every upload, newest first. <strong>Changes</strong> shows what an upload did; the latest saved one can be undone.</p>
+<div x-data>{% include "findata/partials/history_table.html" %}</div>
+{% endblock %}

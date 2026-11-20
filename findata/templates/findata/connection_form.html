@@ -1,0 +1,58 @@
+{% extends base_template %}
+{% block title %}{% if connection.pk %}Edit {{ connection.name }}{% else %}New connection{% endif %}{% endblock %}
+{% block content %}
+<a href="{% url 'findata:connections' %}" class="btn btn-ghost btn-sm mb-3">← Connections</a>
+<div class="mx-auto max-w-2xl">
+  <h1 class="text-2xl font-semibold tracking-tight">{% if connection.pk %}Edit “{{ connection.name }}”{% else %}New connection{% endif %}</h1>
+  <p class="mb-4 text-sm text-base-content/70">A PostgreSQL or MySQL server {{ company.name }} reads from. Reading only: nothing on the server is ever changed. Tip: use a database user that may only read.</p>
+  {% if error %}<div role="alert" class="alert alert-error alert-soft mb-4"><span>{{ error }}</span></div>{% endif %}
+  {{ ports|json_script:"findata-ports" }}
+  <form method="post" autocomplete="off" class="card border border-base-300 bg-base-100"
+        x-data="{ ports: JSON.parse(document.getElementById('findata-ports').textContent), kind: '{{ connection.kind }}' }">
+    {% csrf_token %}
+    <div class="card-body grid gap-3 sm:grid-cols-2">
+      <label class="fieldset sm:col-span-2">
+        <span class="fieldset-legend">Name</span>
+        <input name="name" value="{{ connection.name }}" required maxlength="100" class="input w-full" placeholder="e.g. Tally server" title="A short name people pick when they read from it">
+      </label>
+      <label class="fieldset">
+        <span class="fieldset-legend">Kind</span>
+        <select name="kind" class="select w-full" x-model="kind" @change="$refs.port.value = ports[kind]" title="The kind of database server">
+          {% for value, label in kinds %}<option value="{{ value }}" {% if value == connection.kind %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="fieldset">
+        <span class="fieldset-legend">Host</span>
+        <input name="host" value="{{ connection.host }}" required class="input w-full" placeholder="e.g. 192.168.1.20" title="The server's name or IP address">
+      </label>
+      <label class="fieldset">
+        <span class="fieldset-legend">Port</span>
+        <input name="port" x-ref="port" value="{{ connection.port }}" inputmode="numeric" class="input w-full" title="Usually 5432 for PostgreSQL, 3306 for MySQL">
+      </label>
+      <label class="fieldset">
+        <span class="fieldset-legend">Database</span>
+        <input name="database" value="{{ connection.database }}" required class="input w-full" placeholder="e.g. erp" title="The database name on that server">
+      </label>
+      <label class="fieldset">
+        <span class="fieldset-legend">User</span>
+        <input name="user" value="{{ connection.user }}" required class="input w-full" placeholder="e.g. report" title="The database user to read as">
+      </label>
+      <label class="fieldset">
+        <span class="fieldset-legend">Password (only to test)</span>
+        <input type="password" name="password" class="input w-full" autocomplete="new-password" title="Only used by “Test connection”. It is never saved: people type it each time they read.">
+      </label>
+      <label class="flex items-center gap-2 text-sm sm:col-span-2" title="Encrypt the connection. Tick it when the server is outside your office network.">
+        <input type="checkbox" name="require_ssl" class="checkbox checkbox-sm" {% if connection.require_ssl %}checked{% endif %}> Require SSL (encrypted)
+      </label>
+      <div id="findata-test-result" class="sm:col-span-2"></div>
+      <div class="card-actions justify-end sm:col-span-2">
+        <button type="button" class="btn" hx-post="{% url 'findata:connection_test' %}" hx-include="closest form" hx-target="#findata-test-result" hx-indicator="#findata-test-busy"
+                title="Connect with the password above and count the tables you may read">
+          <span id="findata-test-busy" class="loading loading-spinner loading-xs htmx-indicator"></span>Test connection
+        </button>
+        <button class="btn btn-primary" title="Save (without the password)">Save</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

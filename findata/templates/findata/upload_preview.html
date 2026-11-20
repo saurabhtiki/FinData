@@ -1,0 +1,52 @@
+{% extends base_template %}
+{% load humanize %}
+{% block title %}Preview · {{ dataset.name }}{% endblock %}
+{% block content %}
+{% include "findata/partials/steps.html" with step=3 %}
+<div class="mb-4">
+  <h1 class="text-2xl font-semibold tracking-tight">Check before saving</h1>
+  <p class="text-sm text-base-content/70"><strong>{{ upload.file_name }}</strong> → {{ dataset.name }} · <span class="tooltip" data-tip="{{ mode_help }}"><span class="badge badge-sm badge-soft">{{ mode_label }}</span></span> · nothing is saved until you press Confirm.</p>
+</div>
+
+{% if dates|length == 1 %}
+  <p class="mb-3 text-sm" title="Only this date is replaced; other dates stay as they are">As-of date <strong>{{ dates.0.day|date:"d-m-Y" }}</strong>{% if not dates.0.existing %} <span class="badge badge-sm badge-info badge-soft">new date</span>{% else %} · {{ dates.0.existing|intcomma }} row{{ dates.0.existing|pluralize }} saved before{% endif %}</p>
+{% elif dates %}
+  <p class="mb-3 text-sm" title="Only these dates are replaced; other dates stay as they are"><strong>{{ dates|length }}</strong> As-of dates, {{ dates.0.day|date:"d-m-Y" }} – {% with final=dates|last %}{{ final.day|date:"d-m-Y" }}{% endwith %}. See “Per date” below.</p>
+{% endif %}
+
+<div class="stats stats-vertical mb-4 w-full border border-base-300 bg-base-100 sm:stats-horizontal">
+  <div class="stat" title="Rows in the file that aren't saved yet"><div class="stat-title">New</div><div class="stat-value text-success">{{ upload.added|intcomma }}</div></div>
+  <div class="stat" title="Saved rows whose values change"><div class="stat-title">Changed</div><div class="stat-value text-warning">{{ upload.changed|intcomma }}</div></div>
+  <div class="stat" title="{% if upload.mode == 'full_refresh' %}Saved rows not in the file: Full refresh deletes them{% elif upload.mode == 'dates' %}Saved rows of these dates that aren't in the file are removed{% else %}Add / update never deletes rows{% endif %}"><div class="stat-title">Deleted</div><div class="stat-value text-error">{{ upload.deleted|intcomma }}</div></div>
+  <div class="stat" title="Rows in the file that match the saved rows exactly"><div class="stat-title">Unchanged</div><div class="stat-value text-base-content/50">{{ upload.unchanged|intcomma }}</div></div>
+</div>
+
+{% if has_changes %}
+  <div role="tablist" class="tabs tabs-border mb-2">
+    {% for key, label, count in tabs %}
+      <a role="tab" href="?tab={{ key }}" class="tab {% if key == tab %}tab-active{% endif %}" title="{% if key == 'changed' %}Only the cells that change are shown, as old → new{% elif key == 'dates' %}New, changed and removed rows for each As-of date{% else %}{{ label }} rows{% endif %}">{{ label }} <span class="badge badge-sm ml-1">{{ count|intcomma }}</span></a>
+    {% endfor %}
+  </div>
+  {% if total > shown_limit %}<p class="mb-2 text-xs text-base-content/60">Showing the first {{ shown_limit|intcomma }} of {{ total|intcomma }} rows. All of them are saved when you confirm.</p>{% endif %}
+  <div x-data>{% include "findata/partials/values_table.html" %}</div>
+{% else %}
+  <div role="alert" class="alert alert-info alert-soft"><span>Nothing to update: the file matches what is already saved.</span></div>
+{% endif %}
+
+<form method="post" class="sticky bottom-0 mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-base-300 bg-base-200/95 py-3" x-data="{ ok: {% if upload.needs_delete_tick %}false{% else %}true{% endif %}, busy: false }" @submit="busy = true">
+  {% csrf_token %}
+  {% if upload.needs_delete_tick %}
+    <label class="mr-auto flex items-center gap-2 rounded-box bg-error/10 p-2 text-sm text-error" title="Full refresh deletes every saved row that isn't in your file">
+      <input type="checkbox" name="delete_ok" value="yes" class="checkbox checkbox-error checkbox-sm" x-model="ok">
+      <span><strong>This deletes {{ upload.deleted|intcomma }} of {{ upload.existing|intcomma }} saved rows{% if upload.mode == 'dates' %} of these dates{% endif %}.</strong> Yes, delete {{ upload.deleted|intcomma }} rows.</span>
+    </label>
+  {% endif %}
+  <a href="{% url 'findata:upload_map' upload.id %}" class="btn btn-ghost" title="Go back and change the mapping or the mode">← Change mapping</a>
+  <button formaction="{% url 'findata:upload_cancel' upload.id %}" class="btn btn-ghost" title="Stop here. Nothing is saved.">Cancel</button>
+  {% if upload.has_changes %}
+    <button formaction="{% url 'findata:upload_confirm' upload.id %}" class="btn btn-primary" :disabled="!ok || busy" title="Save these changes. You can undo this upload later from History.">
+      <span x-show="busy" class="loading loading-spinner loading-sm"></span>Confirm
+    </button>
+  {% endif %}
+</form>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% load humanize %}<tr>
+  <td class="dt-sticky whitespace-nowrap" data-dt-col="when">{{ row.when|date:"d-m-Y H:i" }}</td>
+  <td data-dt-col="dataset_id"><a class="link link-hover font-medium" href="{% url 'findata:data' row.dataset_id %}" title="Open {{ row.dataset.name }}">{{ row.dataset.name }}</a></td>
+  <td class="max-w-64 truncate" data-dt-col="file_name">{% if row.status == 'done' or row.status == 'undone' %}<a class="link link-hover link-primary" href="{% url 'findata:changes' row.dataset_id %}?upload={{ row.id }}" title="What {{ row.file_name }} changed: new, changed (old → new) and deleted rows">{{ row.file_name }}</a>{% else %}<span title="{{ row.file_name }}">{{ row.file_name }}</span>{% endif %}</td>
+  <td data-dt-col="mode">{{ row.get_mode_display }}</td>
+  <td data-dt-col="status"><span class="badge badge-sm badge-soft {% if row.status == 'done' %}badge-success{% elif row.status == 'undone' %}badge-neutral{% else %}badge-warning{% endif %}" {% if row.status == 'undone' and row.undone_at %}title="Undone on {{ row.undone_at|date:'d-m-Y H:i' }}{% if row.undone_by %} by {{ row.undone_by }}{% endif %}"{% endif %}>{{ row.get_status_display }}</span></td>
+  <td data-dt-col="user">{{ row.user|default:"—" }}</td>
+  <td class="text-right tabular-nums" data-dt-col="added">{{ row.added|intcomma }}</td>
+  <td class="text-right tabular-nums" data-dt-col="changed">{{ row.changed|intcomma }}</td>
+  <td class="text-right tabular-nums" data-dt-col="deleted">{{ row.deleted|intcomma }}</td>
+</tr>

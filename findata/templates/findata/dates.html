@@ -1,0 +1,60 @@
+{% extends base_template %}
+{% load humanize %}
+{% block title %}{{ dataset.name }} · dates{% endblock %}
+{% block content %}
+{% include "findata/partials/dataset_header.html" %}
+<p class="mb-3 text-sm text-base-content/70">Each As-of date is one copy of the report. Uploading a date again replaces it. Click a green day to see its rows.</p>
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-box border border-base-300 bg-base-100 p-3">
+  <div class="join" role="navigation" aria-label="Year">
+    <a class="btn btn-sm join-item" href="?year={{ year|add:-1 }}" title="Show {{ year|add:-1 }}">← {{ year|add:-1 }}</a>
+    <span class="btn btn-sm btn-active join-item pointer-events-none">{{ year }}</span>
+    <a class="btn btn-sm join-item" href="?year={{ year|add:1 }}" title="Show {{ year|add:1 }}">{{ year|add:1 }} →</a>
+  </div>
+  <div class="flex flex-wrap items-center gap-3 text-sm">
+    <span title="As-of dates with data in {{ year }}"><strong>{{ loaded_in_year }}</strong> date{{ loaded_in_year|pluralize }} loaded</span>
+    {% if dataset.how_often != "any" %}<span class="{% if missing_in_year %}text-error{% else %}text-success{% endif %}" title="Expected dates ({{ dataset.get_how_often_display }}) with no data, from the first loaded date up to today"><strong>{{ missing_in_year|length }}</strong> missing</span>{% endif %}
+    <span class="flex items-center gap-1 text-xs text-base-content/60"><span class="inline-block size-3 rounded-sm bg-success"></span> loaded</span>
+    <span class="flex items-center gap-1 text-xs text-base-content/60"><span class="inline-block size-3 rounded-sm border border-error bg-error/15"></span> missing</span>
+  </div>
+  {% if can_edit %}
+    <form method="post" action="{% url 'findata:dates_how_often' dataset.id %}" class="flex items-center gap-2">
+      {% csrf_token %}
+      <label class="text-sm" for="findata-how-often">Expected</label>
+      <select id="findata-how-often" name="how_often" class="select select-sm w-auto" title="Which dates should have data. It marks missing dates and suggests the next date to upload. It never changes data.">
+        {% for value, label in how_often_choices %}<option value="{{ value }}" {% if value == dataset.how_often %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-sm" title="Save how often this report is expected">Save</button>
+    </form>
+  {% else %}
+    <span class="text-sm text-base-content/70" title="Set by your administrator">Expected: {{ dataset.get_how_often_display }}</span>
+  {% endif %}
+</div>
+
+{% if missing_in_year %}
+  <div role="alert" class="alert alert-error alert-soft mb-4">
+    <span>Missing in {{ year }}: {% for day in missing_in_year|slice:":12" %}{% if can_upload %}<a class="link" href="{% url 'findata:upload' dataset.id %}?as_of={{ day|date:'Y-m-d' }}" title="Upload {{ day|date:'d-m-Y' }}">{{ day|date:"d-m-Y" }}</a>{% else %}{{ day|date:"d-m-Y" }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}{% if missing_in_year|length > 12 %} and {{ missing_in_year|length|add:-12 }} more{% endif %}.</span>
+  </div>
+{% endif %}
+
+<div class="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  {% for month in months %}
+    <div class="rounded-box border border-base-300 bg-base-100 p-3">
+      <h2 class="mb-2 text-sm font-semibold">{{ month.name }}</h2>
+      <div class="grid grid-cols-7 gap-1 text-center text-[0.7rem]">
+        {% for name in "MTWTFSS" %}<span class="text-base-content/40">{{ name }}</span>{% endfor %}
+        {% for week in month.weeks %}{% for cell in week %}
+          {% if cell.state == "outside" %}<span></span>
+          {% elif cell.state == "loaded" %}<a href="{% url 'findata:data' dataset.id %}?as_of={{ cell.day|date:'Y-m-d' }}" class="rounded-sm bg-success py-0.5 font-medium text-success-content hover:opacity-80" title="{{ cell.tip }} · click to see its rows">{{ cell.day.day }}</a>
+          {% elif cell.state == "missing" %}{% if can_upload %}<a href="{% url 'findata:upload' dataset.id %}?as_of={{ cell.day|date:'Y-m-d' }}" class="rounded-sm border border-error bg-error/15 py-0.5 font-medium text-error hover:bg-error/30" title="{{ cell.tip }} · click to upload it">{{ cell.day.day }}</a>{% else %}<span class="rounded-sm border border-error bg-error/15 py-0.5 text-error" title="{{ cell.tip }}">{{ cell.day.day }}</span>{% endif %}
+          {% elif cell.state == "future" %}<span class="py-0.5 text-base-content/25" title="{{ cell.tip }} · in the future">{{ cell.day.day }}</span>
+          {% else %}<span class="py-0.5 text-base-content/60" title="{{ cell.tip }}">{{ cell.day.day }}</span>{% endif %}
+        {% endfor %}{% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<h2 class="mb-2 text-lg font-semibold">All dates</h2>
+<div x-data>{% include "findata/partials/dates_table.html" %}</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% load humanize %}<tr>
+  <td>
+    <a class="link link-hover font-medium" href="{% url 'findata:data' row.id %}" title="Open {{ row.name }}: its rows, changes, uploads{% if row.kind == 'snapshot' %} and dates{% endif %}">{{ row.name }}</a>
+    <div class="text-xs text-base-content/50" title="Table in the database">{{ row.table }}</div>
+  </td>
+  <td><span class="badge badge-sm badge-soft {% if row.kind == 'master' %}badge-primary{% elif row.kind == 'transaction' %}badge-secondary{% else %}badge-accent{% endif %}">{% if row.kind == 'master' %}Master{% elif row.kind == 'transaction' %}Transaction{% else %}Periodic report{% endif %}</span></td>
+  <td class="max-w-48 truncate" title="Columns that identify one row">{{ row.key|default:"—" }}</td>
+  <td class="max-w-48 truncate" title="Values in this dataset must exist in these datasets">{{ row.links|default:"—" }}</td>
+  <td class="text-right tabular-nums">{{ row.columns }}</td>
+  <td class="text-right tabular-nums">{{ row.rows|intcomma }}</td>
+  <td class="whitespace-nowrap">{{ row.updated|date:"d-m-Y" }}</td>
+  <td class="whitespace-nowrap text-right">
+    {% if can_upload %}<a class="btn btn-primary btn-soft btn-xs" href="{% url 'findata:upload' row.id %}" title="{% if row.kind == 'snapshot' %}Pick the As-of date, then upload a file or read from a database: it replaces that date only{% else %}Upload a CSV, Excel or JSON file, or read from a database: match columns, preview, then confirm{% endif %}">Upload</a>{% endif %}
+    {% if can_upload and row.pull_again %}<a class="btn btn-secondary btn-soft btn-xs" href="{% url 'findata:upload' row.id %}?tab=database&amp;again=1" title="Read the same table or query from the same database as last time: type the password, then preview">Pull again</a>{% endif %}
+    <button type="button" class="btn btn-ghost btn-xs" popovertarget="findata-menu-{{ row.id }}" style="anchor-name:--findata-menu-{{ row.id }}" title="More: template{% if can_edit %}, edit, delete{% endif %}" aria-label="More actions for {{ row.name }}">⋯</button>
+    <ul class="dropdown dropdown-end menu w-52 rounded-box bg-base-100 p-2 text-left shadow-sm" popover id="findata-menu-{{ row.id }}" style="position-anchor:--findata-menu-{{ row.id }}">
+      <li><a href="{% url 'findata:template' row.id %}" title="Download a blank Excel file with this dataset's columns, to fill in and upload">Blank template</a></li>
+      {% if can_edit %}
+        <li><a href="{% url 'findata:edit' row.id %}" title="Change columns, key, rules or links">Edit definition</a></li>
+        {% if row.linked_from %}
+          <li class="menu-disabled"><span title="Can't delete: {{ row.linked_from|join:', ' }} link(s) to it">Delete (linked)</span></li>
+        {% else %}
+          <li><button type="button" class="text-error" title="Delete this dataset and its table"
+                @click="document.getElementById('findata-menu-{{ row.id }}').hidePopover(); $dispatch('findata-delete', { name: '{{ row.name|escapejs }}', url: '{% url 'findata:delete' row.id %}', rows: {{ row.rows }} })">Delete…</button></li>
+        {% endif %}
+      {% endif %}
+    </ul>
+  </td>
+</tr>

@@ -1,0 +1,17 @@
+{% extends base_template %}
+{% block title %}Problems · {{ dataset.name }}{% endblock %}
+{% block content %}
+{% include "findata/partials/steps.html" with step=2 %}
+<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">{{ upload.file_name }} can't be saved yet</h1>
+    <p class="max-w-2xl text-sm text-base-content/70">{{ count }} problem{{ count|pluralize }}{% if limit_hit %} (only the first {{ count }} are listed){% endif %}. {% if upload.from_database %}Nothing was saved: fix the data (or your query) and read it again. Row numbers count the rows of the result: 1 is the first row.{% else %}Nothing was saved: fix the file and upload it again. Row numbers are the rows in your file (in a CSV, blank lines are not counted).{% endif %}</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <a class="btn btn-sm" href="{% url 'findata:upload_problems_file' upload.id %}" title="Every problem in an Excel file, to fix the file row by row">Download as Excel</a>
+    {% if upload.status == "mapping" %}<a class="btn btn-sm" href="{% url 'findata:upload_map' upload.id %}" title="Go back and change which file column goes where">← Change mapping</a>{% endif %}
+    {% if upload.source_kind == "server" %}<a class="btn btn-sm btn-primary" href="{% url 'findata:upload' dataset.id %}?tab=database" title="Read from the database again">Read again</a>{% else %}<a class="btn btn-sm btn-primary" href="{% url 'findata:upload' dataset.id %}{% if upload.source_kind == 'sqlite' %}?tab=database{% endif %}" title="Upload the corrected file">Upload a fixed file</a>{% endif %}
+  </div>
+</div>
+<div x-data>{% include "findata/partials/problems_table.html" %}</div>
+{% endblock %}

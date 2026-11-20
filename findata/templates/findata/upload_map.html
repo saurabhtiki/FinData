@@ -1,0 +1,131 @@
+{% extends base_template %}
+{% block title %}Match columns · {{ dataset.name }}{% endblock %}
+{% block content %}
+{% if upload.source_kind == "sqlite" %}<a href="{% url 'findata:upload_sqlite' upload.id %}" class="btn btn-ghost btn-sm mb-3" title="Pick a different table or query">← Different table</a>{% elif upload.from_database %}<a href="{% url 'findata:upload' dataset.id %}?tab=database" class="btn btn-ghost btn-sm mb-3" title="Read from the database again">← Read again</a>{% else %}<a href="{% url 'findata:upload' dataset.id %}" class="btn btn-ghost btn-sm mb-3" title="Pick a different file">← Different file</a>{% endif %}
+{% include "findata/partials/steps.html" with step=2 %}
+<div class="mb-4">
+  <h1 class="text-2xl font-semibold tracking-tight">Match columns</h1>
+  <p class="text-sm text-base-content/70"><strong>{% if upload.from_database %}{{ sheet.label }}{% else %}{{ upload.file_name }}{% endif %}</strong> → {{ dataset.name }} · {{ sheet.row_count }} row{{ sheet.row_count|pluralize }}. FinData matched what it could; fix the rest. Your choices are remembered for the next file.</p>
+</div>
+
+{% if problems %}
+  <div role="alert" class="alert alert-error alert-soft mb-4">
+    <ul class="list-disc pl-5 text-sm">{% for item in problems %}<li>{{ item }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+{% if sheets|length > 1 %}
+  <form method="get" class="mb-4 flex flex-wrap items-center gap-2">
+    <input type="hidden" name="mode" value="{{ mode }}">
+    <label class="text-sm font-medium" for="findata-sheet">Sheet</label>
+    <select id="findata-sheet" name="sheet" class="select select-sm w-auto" onchange="this.form.submit()" title="This file has several sheets (or lists). Pick the one to upload.">
+      {% for item in sheets %}<option value="{{ item.label }}" {% if item.label == sheet.label %}selected{% endif %}>{{ item.label }} ({{ item.row_count }} rows)</option>{% endfor %}
+    </select>
+  </form>
+{% endif %}
+
+{{ columns_json|json_script:"findata-columns" }}
+{{ chosen_json|json_script:"findata-chosen" }}
+{{ headers_json|json_script:"findata-headers" }}
+<form method="post" x-data="uploadMapper()" @submit="busy = true">
+  {% csrf_token %}
+  <input type="hidden" name="sheet" value="{{ sheet.label }}">
+  <div class="grid gap-4 lg:grid-cols-3">
+    <div class="lg:col-span-2">
+      <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+        <table class="table table-sm">
+          <thead><tr><th>Column in your file</th><th>Sample values</th><th>Goes into</th></tr></thead>
+          <tbody>
+            {% for row in rows %}
+              <tr :class="chosen[{{ row.index }}] === '' && 'opacity-60'">
+                <td class="font-medium">{{ row.header }}</td>
+                <td class="max-w-56 truncate text-xs text-base-content/60" title="{{ row.samples }}">{{ row.samples|default:"(blank)" }}</td>
+                <td>
+                  <select name="map_{{ row.index }}" class="select select-sm w-full" x-model="chosen[{{ row.index }}]"
+                          :class="twice(chosen[{{ row.index }}]) && 'select-error'"
+                          title="Which dataset column this file column fills. Pick “Skip” to leave it out.">
+                    <option value="">— Skip this column —</option>
+                    <template x-for="column in columns" :key="column.name">
+                      <option :value="column.name" x-text="column.label + (column.required ? ' *' : '')" :selected="column.name === chosen[{{ row.index }}]"></option>
+                    </template>
+                  </select>
+                  <p class="mt-1 text-xs text-error" x-show="twice(chosen[{{ row.index }}])" x-cloak>Picked for more than one file column.</p>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      {% if dataset.is_snapshot %}
+        <div class="card border border-base-300 bg-base-100">
+          <div class="card-body p-4">
+            <h2 class="font-semibold">As-of date</h2>
+            <p class="text-sm" x-show="filled({ name: '{{ as_of_name }}' })" x-cloak>
+              Each row's date comes from <strong x-text="filled({ name: '{{ as_of_name }}' })"></strong>. One file can hold several dates.
+            </p>
+            <div x-show="!filled({ name: '{{ as_of_name }}' })">
+              <input type="date" name="as_of" value="{{ as_of }}" max="{{ today }}" class="input input-sm w-full"
+                     title="The date the whole file is for, e.g. 31-03-2026">
+              <p class="mt-1 text-xs text-base-content/70">The whole file is for this date. Has the file a date column? Pick “As-of date” for it on the left instead.</p>
+            </div>
+            <p class="text-xs text-base-content/60" title="{{ dates_help }}">Only these dates are replaced: rows of these dates not in your file are removed. Other dates stay as they are.</p>
+          </div>
+        </div>
+      {% else %}
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body p-4">
+          <h2 class="font-semibold">How to save</h2>
+          {% for value, label, help in modes %}
+            <label class="flex cursor-pointer items-start gap-3 rounded-box border border-base-300 p-3 has-checked:border-primary has-checked:bg-primary/5" title="{{ help }}">
+              <input type="radio" name="mode" value="{{ value }}" class="radio radio-primary radio-sm mt-0.5" {% if value == mode %}checked{% endif %}>
+              <span><span class="font-medium">{{ label }}</span><span class="block text-xs text-base-content/70">{{ help }}</span></span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="card border border-base-300 bg-base-100">
+        <div class="card-body p-4">
+          <h2 class="font-semibold">{{ dataset.name }} columns</h2>
+          <ul class="text-sm">
+            <template x-for="column in columns.filter((c) => c.name !== '{{ as_of_name }}')" :key="column.name">
+              <li class="flex items-center justify-between gap-2 py-0.5">
+                <span><span x-text="column.label"></span><span class="text-error" x-show="column.required" title="Required: the file must have it"> *</span></span>
+                <span class="text-xs" :class="filled(column) ? 'text-success' : (column.required ? 'text-error font-medium' : 'text-base-content/50')"
+                      x-text="filled(column) ? '✓ ' + filled(column) : (column.required ? 'needed' : 'not in file')"
+                      :title="filled(column) ? '' : (column.required ? 'Required: map a file column to it' : 'Saved rows keep their value; new rows get blank')"></span>
+              </li>
+            </template>
+          </ul>
+          <p class="text-xs text-base-content/60">* Required (key or Required). A column not in the file keeps its saved values.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="submit" formaction="{% url 'findata:upload_cancel' upload.id %}" formnovalidate class="btn btn-ghost" title="Stop here. Nothing is saved.">Cancel</button>
+        <button class="btn btn-primary" :disabled="busy || missing().length > 0" :title="missing().length ? 'Still needed: ' + missing().join(', ') : 'Check every row and show what will change'">
+          <span x-show="busy" class="loading loading-spinner loading-sm"></span>Next: preview
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+<script>
+  function uploadMapper() {
+    return {
+      busy: false,
+      columns: JSON.parse(document.getElementById("findata-columns").textContent),
+      chosen: JSON.parse(document.getElementById("findata-chosen").textContent),
+      headers: JSON.parse(document.getElementById("findata-headers").textContent),
+      twice(name) { return name !== "" && this.chosen.filter((value) => value === name).length > 1; },
+      filled(column) {
+        const index = this.chosen.indexOf(column.name);
+        return index === -1 ? "" : this.headers[index];
+      },
+      missing() { return this.columns.filter((c) => c.required && !this.chosen.includes(c.name)).map((c) => c.label); },
+    };
+  }
+</script>
+{% endblock %}

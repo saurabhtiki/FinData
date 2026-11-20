@@ -1,0 +1,15 @@
+{% load humanize %}<tr>
+  <td class="whitespace-nowrap">{{ row.when|date:"d-m-Y H:i" }}</td>
+  <td class="max-w-64 truncate" title="{{ row.file }}">{{ row.file }}</td>
+  <td>{{ row.mode_label }}</td>
+  <td><span class="badge badge-sm badge-soft {% if row.status == 'done' %}badge-success{% elif row.status == 'undone' %}badge-neutral{% else %}badge-warning{% endif %}">{% if row.status == 'done' %}Saved{% elif row.status == 'undone' %}Undone{% elif row.status == 'preview' %}Waiting for confirm{% else %}Mapping columns{% endif %}</span></td>
+  <td>{{ row.user|default:"—" }}</td>
+  <td class="text-right tabular-nums">{{ row.added|intcomma }}</td>
+  <td class="text-right tabular-nums">{{ row.changed|intcomma }}</td>
+  <td class="text-right tabular-nums">{{ row.deleted|intcomma }}</td>
+  <td class="whitespace-nowrap text-right">
+    {% if row.status == 'done' or row.status == 'undone' %}<a class="btn btn-ghost btn-xs" href="{% url 'findata:changes' dataset.id %}?upload={{ row.id }}" title="What this upload changed: new, changed (old → new) and deleted rows">Changes</a>{% endif %}
+    {% if row.can_undo %}<a class="btn btn-ghost btn-xs text-error" href="{% url 'findata:upload_undo' row.id %}" title="Put the dataset back as it was before this upload (you see what changes first)">Undo</a>{% endif %}
+    {% if row.open %}<a class="btn btn-ghost btn-xs" href="{% url 'findata:upload_map' row.id %}" title="Carry on with this unfinished upload">Continue</a>{% endif %}
+  </td>
+</tr>

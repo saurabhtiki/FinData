@@ -1,0 +1,11 @@
+<tr>
+  <td class="font-medium">{{ row.name }}</td>
+  <td>{% if row.kind == "mysql" %}MySQL / MariaDB{% else %}PostgreSQL{% endif %}</td>
+  <td>{{ row.place }}</td>
+  <td>{{ row.user }}</td>
+  <td class="max-w-48 truncate" title="Datasets whose “Pull again” reads from this connection">{{ row.used_by|default:"—" }}</td>
+  <td class="whitespace-nowrap text-right">
+    <a class="btn btn-ghost btn-xs" href="{% url 'findata:connection_edit' row.id %}" title="Change the server, database or user">Edit</a>
+    <a class="btn btn-ghost btn-xs text-error" href="{% url 'findata:connection_delete' row.id %}" title="Delete this saved connection (you see which datasets use it first)">Delete</a>
+  </td>
+</tr>

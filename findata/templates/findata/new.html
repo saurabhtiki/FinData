@@ -1,0 +1,55 @@
+{% extends base_template %}
+{% block title %}New dataset · {{ company.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'findata:datasets' %}" class="btn btn-ghost btn-sm mb-3">← Datasets</a>
+<h1 class="text-2xl font-semibold tracking-tight">New dataset</h1>
+<p class="mb-6 text-sm text-base-content/70">For {{ company.name }}. Pick how to start. You can change everything on the next screen before saving.</p>
+
+<div class="grid gap-4 lg:grid-cols-3">
+  <form method="post" action="{% url 'findata:new_sample' %}" enctype="multipart/form-data"
+        class="card border-2 border-primary/40 bg-base-100 lg:col-span-2" x-data="{ busy: false }" @submit="busy = true">
+    {% csrf_token %}
+    <div class="card-body">
+      <span class="badge badge-primary badge-soft">Quickest</span>
+      <h2 class="card-title">From a sample file</h2>
+      <p class="text-sm text-base-content/70">Drop a CSV or Excel export, e.g. your chart of accounts from Tally. FinData reads the headers, guesses each type (Amount → Decimal, Date → Date) and suggests a key. The sample's rows are <strong>not</strong> saved.</p>
+      <input type="file" name="sample" accept=".csv,.txt,.xlsx,.xlsm" required class="file-input file-input-primary mt-2 w-full"
+             title="A CSV or Excel file with a header row. Several sheets? You pick one on the next screen.">
+      <div class="card-actions justify-end">
+        <button class="btn btn-primary" :disabled="busy"><span x-show="busy" class="loading loading-spinner loading-sm"></span>Read the file</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="flex flex-col gap-4">
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-base">Copy from another company</h2>
+        {% if copy_sources %}
+          <p class="text-sm text-base-content/70">Same columns as a dataset another company already has.</p>
+          <form method="get" x-data="{ pick: '' }" @submit.prevent="if (pick) window.location = pick">
+            <select class="select select-sm w-full" x-model="pick" title="Pick the dataset to copy">
+              <option value="">— pick a dataset —</option>
+              {% for source in copy_sources %}
+                <optgroup label="{{ source.company.name }}">
+                  {% for id, name in source.datasets %}<option value="{% url 'findata:new_copy' id %}">{{ name }}</option>{% endfor %}
+                </optgroup>
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm mt-2 w-full" :disabled="!pick">Copy</button>
+          </form>
+        {% else %}
+          <p class="text-sm text-base-content/60">No other company has datasets you can copy yet.</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body">
+        <h2 class="card-title text-base">Start blank</h2>
+        <p class="text-sm text-base-content/70">Type each column yourself.</p>
+        <a href="{% url 'findata:new_blank' %}" class="btn btn-sm">Start blank</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+{# Where the user is in an upload. Needs: step (1–4). #}
+<ul class="steps steps-horizontal mb-6 w-full text-xs">
+  <li class="step {% if step >= 1 %}step-primary{% endif %}" title="Choose the file">File</li>
+  <li class="step {% if step >= 2 %}step-primary{% endif %}" title="Match file columns to dataset columns">Columns</li>
+  <li class="step {% if step >= 3 %}step-primary{% endif %}" title="See what will change before anything is saved">Preview</li>
+  <li class="step {% if step >= 4 %}step-primary{% endif %}" title="Saved, with a change log you can undo">Saved</li>
+</ul>

@@ -1,0 +1,28 @@
+{% extends base_template %}
+{% block title %}{{ dataset.name }} · data{% endblock %}
+{% block content %}
+{% include "findata/partials/dataset_header.html" %}
+{% if dataset.is_snapshot %}
+  <form method="get" class="mb-3 flex flex-wrap items-center gap-2 rounded-box border border-base-300 bg-base-100 p-3">
+    <label for="findata-as-of" class="text-sm font-medium">As-of date</label>
+    {% if loaded %}
+      <select id="findata-as-of" name="as_of" class="select select-sm w-auto" onchange="this.form.submit()" title="A periodic report keeps one copy per As-of date. Pick the date to see.">
+        {% for day in loaded reversed %}<option value="{{ day|date:'Y-m-d' }}"{% if day == as_of %} selected{% endif %}>{{ day|date:"d-m-Y" }}</option>{% endfor %}
+        {% if as_of and not as_of_loaded %}<option value="{{ as_of|date:'Y-m-d' }}" selected>{{ as_of|date:"d-m-Y" }} (no data)</option>{% endif %}
+      </select>
+      <noscript><button class="btn btn-sm">Show</button></noscript>
+      <span class="text-xs text-base-content/60">{{ loaded|length }} date{{ loaded|length|pluralize }} loaded · <a class="link" href="{% url 'findata:dates' dataset.id %}" title="See them on a calendar">calendar</a></span>
+    {% else %}
+      <span class="text-sm text-base-content/70">No dates loaded yet.</span>
+    {% endif %}
+  </form>
+{% endif %}
+{% if one_key %}
+  <div role="alert" class="alert alert-soft alert-info mb-3">
+    <span>Showing one row: <strong>{{ one_key }}</strong>.</span>
+    <a class="btn btn-sm" href="{% url 'findata:data' dataset.id %}" title="Show every row of {{ dataset.name }}">Show all rows</a>
+  </div>
+{% endif %}
+<div x-data>{% include "findata/partials/data_table.html" %}</div>
+{% include "findata/partials/row_history_dialog.html" %}
+{% endblock %}

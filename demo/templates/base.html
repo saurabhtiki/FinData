@@ -1,0 +1,39 @@
+{% load static %}<!doctype html>
+<html lang="en" data-theme="findata">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Demo{% endblock %} · FinData demo</title>
+  <link href="{% static 'css/tailwind.css' %}?v={{ css_version }}" rel="stylesheet">
+  <script src="{% static 'vendor/htmx-2.0.6.min.js' %}"></script>
+  <link href="{% static 'django_datatable/datatable.css' %}" rel="stylesheet">
+  <script defer src="{% static 'django_datatable/datatable.js' %}"></script>
+  {% block extra_head %}{% endblock %}
+  <script defer src="{% static 'vendor/alpine-3.14.9.min.js' %}"></script>
+  <style>[x-cloak]{display:none!important}</style>
+</head>
+<body class="min-h-screen bg-base-200" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <header class="navbar gap-3 border-b border-base-300 bg-base-100 px-4 sm:px-6">
+    <a href="/" class="flex-1 font-semibold tracking-tight">Host app <span class="font-normal text-base-content/50">· demo</span></a>
+    <form method="post" action="{% url 'pick_company' %}" class="flex items-center gap-2">
+      {% csrf_token %}
+      <label for="demo-company" class="text-sm text-base-content/70">Company</label>
+      <select id="demo-company" name="company" class="select select-sm w-48" onchange="this.form.submit()"
+              title="The host app decides which company you work on. FinData keeps each company's data apart.">
+        <option value="">— pick one —</option>
+        {% for key, name in demo_companies.items %}<option value="{{ key }}"{% if key == demo_company %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+    </form>
+  </header>
+  <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+    {% if messages %}
+      <div class="mb-4 space-y-2">
+        {% for message in messages %}
+          <div role="alert" class="alert alert-soft {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %}"><span>{{ message }}</span></div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

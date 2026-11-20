@@ -1,0 +1,131 @@
+{% extends base_template %}
+{% block title %}Upload · {{ dataset.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'findata:datasets' %}" class="btn btn-ghost btn-sm mb-3">← Datasets</a>
+<div class="mx-auto max-w-2xl" x-data="{ tab: '{{ tab }}', asOf: '{{ as_of|default:''|escapejs }}' }">
+  {% include "findata/partials/steps.html" with step=1 %}
+  <h1 class="text-2xl font-semibold tracking-tight">Upload into {{ dataset.name }}</h1>
+  <p class="mb-4 text-sm text-base-content/70">{{ company.name }} · nothing is saved until you see the preview and press Confirm.</p>
+  {% if error %}<div role="alert" class="alert alert-error alert-soft mb-4"><span>{{ error }}</span></div>{% endif %}
+
+  {% if dataset.is_snapshot %}
+    <div class="card mb-4 border border-base-300 bg-base-100">
+      <div class="card-body p-4">
+        <label class="fieldset">
+          <span class="fieldset-legend">As-of date
+            {% if as_of_missing %}<span class="badge badge-warning badge-soft badge-sm" x-show="asOf === '{{ as_of }}'" title="Expected ({{ dataset.get_how_often_display }}) but not loaded yet">missing</span>{% endif %}
+          </span>
+          <input type="date" class="input w-full sm:w-60" x-model="asOf" max="{{ today }}"
+                 title="The date this report is for, e.g. receivables as of 31-03-2026. Uploading a date again replaces it.">
+          {% if date_column %}<span class="label whitespace-normal text-info">Last time the dates came from the file column “{{ date_column }}”. Leave this empty to use it again.</span>{% endif %}
+          <span class="label whitespace-normal">The whole upload is for this date; it replaces what {{ dataset.name }} has for it. Has your file a date column (e.g. Report date)? Leave this empty and pick that column on the next screen.</span>
+        </label>
+        <a class="link link-hover text-xs text-base-content/60" href="{% url 'findata:dates' dataset.id %}" title="A calendar of the dates already loaded, and the missing ones">See the dates loaded</a>
+      </div>
+    </div>
+  {% endif %}
+
+  <div role="tablist" class="tabs tabs-box mb-4 w-fit">
+    <button type="button" role="tab" class="tab" :class="tab === 'file' && 'tab-active'" @click="tab = 'file'" title="A CSV, Excel or JSON file">File</button>
+    <button type="button" role="tab" class="tab" :class="tab === 'database' && 'tab-active'" @click="tab = 'database'" title="A SQLite file, or a saved database server">Database</button>
+  </div>
+
+  {# ---------- File ---------- #}
+  <form x-show="tab === 'file'" method="post" enctype="multipart/form-data" class="card border border-base-300 bg-base-100" x-data="{ busy: false }" @submit="busy = true">
+    {% csrf_token %}
+    {% if dataset.is_snapshot %}<input type="hidden" name="as_of" :value="asOf">{% endif %}
+    <div class="card-body">
+      <label class="fieldset">
+        <span class="fieldset-legend">File</span>
+        <input type="file" name="file" accept=".csv,.xlsx,.xlsm,.json,.jsonl" required class="file-input file-input-primary w-full"
+               title="CSV, Excel (.xlsx) or JSON with a header row. Several sheets? You pick one on the next screen.">
+        <span class="label">CSV, Excel or JSON, with column names in the first row.</span>
+      </label>
+      <div class="mt-2 text-sm text-base-content/70">
+        No file yet? <a class="link link-primary" href="{% url 'findata:template' dataset.id %}" title="A blank Excel file with this dataset's columns, rules and help">Download the blank template</a>.
+      </div>
+      <div class="card-actions mt-2 justify-end">
+        <button class="btn btn-primary" :disabled="busy"><span x-show="busy" class="loading loading-spinner loading-sm"></span>Next: match columns</button>
+      </div>
+    </div>
+  </form>
+
+  {# ---------- Database ---------- #}
+  <div x-show="tab === 'database'" x-cloak class="space-y-4">
+    {% if servers_on %}
+      <form method="post" action="{% url 'findata:upload_pull' dataset.id %}" class="card border border-base-300 bg-base-100" autocomplete="off"
+            x-data="{ busy: false, own: {{ remembered.select|yesno:'true,false' }} }" @submit="busy = true">
+        {% csrf_token %}
+        {% if again %}<input type="hidden" name="again" value="1">{% endif %}
+        {% if dataset.is_snapshot %}<input type="hidden" name="as_of" :value="asOf">{% endif %}
+        <div class="card-body">
+          <h2 class="card-title text-base">From a database server{% if again %} · pull again{% endif %}</h2>
+          {% if again %}<p class="text-sm text-base-content/70">The same connection and table as last time. Type the password{% if dataset.is_snapshot %}, check the As-of date above,{% endif %} and you go straight to the preview (if the columns are the same).</p>{% endif %}
+          {% if connections %}
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label class="fieldset">
+                <span class="fieldset-legend">Connection</span>
+                <select name="connection" class="select w-full" required title="A server saved by your administrator">
+                  {% for item in connections %}<option value="{{ item.id }}" {% if item.id == remembered.connection %}selected{% endif %}>{{ item.name }} · {{ item.place }}</option>{% endfor %}
+                </select>
+              </label>
+              <label class="fieldset">
+                <span class="fieldset-legend">Password</span>
+                <input type="password" name="password" required class="input w-full" autocomplete="new-password" {% if again %}autofocus{% endif %}
+                       title="The database user's password. It is used for this read only and never saved.">
+                <span class="label">Used for this read only, never saved.</span>
+              </label>
+            </div>
+            <div class="mt-2 flex gap-4 text-sm">
+              <label class="flex items-center gap-2" title="Read a whole table or view"><input type="radio" class="radio radio-sm" :checked="!own" @change="own = false"> A table</label>
+              <label class="flex items-center gap-2" title="Write one SELECT, e.g. to read only this year's rows"><input type="radio" class="radio radio-sm" :checked="own" @change="own = true"> My own query</label>
+            </div>
+            <div x-show="!own" class="flex flex-wrap items-end gap-2">
+              <div id="findata-table-pick" class="grow">
+                <label class="fieldset">
+                  <span class="fieldset-legend">Table</span>
+                  <input name="table" value="{{ remembered.table }}" class="input w-full" placeholder="e.g. vouchers" :disabled="own"
+                         title="Type the table name, or press “Show tables” to pick from the list">
+                </label>
+              </div>
+              <button type="button" class="btn btn-sm mb-1" hx-post="{% url 'findata:upload_tables' dataset.id %}" hx-include="closest form" hx-target="#findata-table-pick" hx-indicator="#findata-tables-busy"
+                      title="Connect with the password above and list the tables you may read">
+                <span id="findata-tables-busy" class="loading loading-spinner loading-xs htmx-indicator"></span>Show tables
+              </button>
+            </div>
+            <label x-show="own" class="fieldset">
+              <span class="fieldset-legend">Your query</span>
+              <textarea name="own_query" rows="4" class="textarea w-full font-mono text-sm" :disabled="!own" placeholder="SELECT * FROM vouchers WHERE date >= '2026-04-01'"
+                        title="One SELECT only. It can only read: nothing on the server can be changed.">{{ remembered.select }}</textarea>
+              <span class="label">One SELECT. Read-only, at most {{ limits.max_rows }} rows and {{ limits.query_seconds }} seconds.</span>
+            </label>
+            <div class="card-actions mt-2 justify-end">
+              <button class="btn btn-primary" :disabled="busy"><span x-show="busy" class="loading loading-spinner loading-sm"></span>{% if again %}Pull and preview{% else %}Read rows: match columns{% endif %}</button>
+            </div>
+          {% else %}
+            <p class="text-sm text-base-content/70">No database server is saved for {{ company.name }} yet.
+              {% if can_edit %}<a class="link link-primary" href="{% url 'findata:connection_new' %}">Add a connection</a>.{% else %}Ask your administrator to add one.{% endif %}</p>
+          {% endif %}
+          {% if can_edit %}<a class="link link-hover text-xs text-base-content/60" href="{% url 'findata:connections' %}" title="Add, change or delete saved servers">Manage connections</a>{% endif %}
+        </div>
+      </form>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="card border border-base-300 bg-base-100" x-data="{ busy: false }" @submit="busy = true">
+      {% csrf_token %}
+      {% if dataset.is_snapshot %}<input type="hidden" name="as_of" :value="asOf">{% endif %}
+      <div class="card-body">
+        <h2 class="card-title text-base">From a SQLite file</h2>
+        <label class="fieldset">
+          <input type="file" name="file" accept=".db,.sqlite,.sqlite3" required class="file-input w-full"
+                 title="A SQLite database file. You pick the table (or write a query) on the next screen.">
+          <span class="label">.db, .sqlite or .sqlite3. You pick the table next.</span>
+        </label>
+        <div class="card-actions justify-end">
+          <button class="btn" :disabled="busy"><span x-show="busy" class="loading loading-spinner loading-sm"></span>Next: pick a table</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

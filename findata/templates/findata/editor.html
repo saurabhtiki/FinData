@@ -1,0 +1,209 @@
+{% extends base_template %}
+{% block title %}{% if dataset %}Edit {{ dataset.name }}{% else %}New dataset{% endif %} · {{ company.name }}{% endblock %}
+{% block content %}
+{{ payload_json|json_script:"fd-payload" }}
+{{ targets_json|json_script:"fd-targets" }}
+{{ types_json|json_script:"fd-types" }}
+{{ sheets_json|json_script:"fd-sheets" }}
+{{ row_errors_json|json_script:"fd-row-errors" }}
+{{ reserved_json|json_script:"fd-reserved" }}
+
+<div x-data="datasetEditor()" x-cloak>
+  <a href="{% url 'findata:datasets' %}" class="btn btn-ghost btn-sm mb-3">← Datasets</a>
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <p class="text-sm text-base-content/60">{{ company.name }}</p>
+      <h1 class="text-2xl font-semibold tracking-tight">{% if dataset %}Edit {{ dataset.name }}{% else %}New dataset{% endif %}</h1>
+    </div>
+  </div>
+
+  {% if form_errors %}
+    <div role="alert" class="alert alert-error alert-soft mb-4">
+      <div>
+        <p class="font-semibold">Please fix these, then save again:</p>
+        <ul class="list-disc pl-5 text-sm">{% for error in form_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+      </div>
+    </div>
+  {% endif %}
+  {% for note in notes %}<div role="alert" class="alert alert-warning alert-soft mb-2 text-sm"><span>{{ note }}</span></div>{% endfor %}
+  {% if dataset and row_count %}
+    <div role="alert" class="alert alert-info alert-soft mb-4 text-sm">
+      <span>This table already has <strong>{{ row_count }}</strong> rows. Adding columns and renaming are fine. Changing a type, the key or making a column required is checked against those rows first; if any row doesn't fit, nothing is changed and you'll see which.</span>
+    </div>
+  {% endif %}
+  {% if linking %}
+    <div role="alert" class="alert alert-soft mb-4 text-sm"><span>{{ linking|join:", " }} link(s) to this dataset's key, so the key can't change.</span></div>
+  {% endif %}
+
+  <template x-if="sheets.length > 1">
+    <div class="mb-4 flex flex-wrap items-center gap-2 rounded-box border border-base-300 bg-base-100 p-3">
+      <label for="fd-sheet" class="text-sm font-medium">Sheet</label>
+      <select id="fd-sheet" class="select select-sm w-72" x-model.number="sheetIndex" @change="useSheet()" title="The file has several sheets. Pick the one this dataset is built from.">
+        <template x-for="(sheet, index) in sheets" :key="index"><option :value="index" x-text="`${sheet.label} (${sheet.row_count.toLocaleString()} rows)`"></option></template>
+      </select>
+    </div>
+  </template>
+  <template x-if="keyNote"><div role="alert" class="alert alert-success alert-soft mb-4 text-sm"><span x-text="keyNote"></span></div></template>
+
+  <form method="post" action="{% if dataset %}{% url 'findata:edit' dataset.id %}{% else %}{% url 'findata:create' %}{% endif %}" @submit="serialize()">
+    {% csrf_token %}
+    <input type="hidden" name="definition" x-ref="definition">
+
+    <div class="card mb-4 border border-base-300 bg-base-100">
+      <div class="card-body grid gap-4 md:grid-cols-3">
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Dataset name</legend>
+          <input class="input w-full" x-model="name" maxlength="100" required placeholder="e.g. Chart of Accounts" title="Shown on screens. The database table name is made from it.">
+          <p class="label">Table: <code x-text="`{{ company.schema }}.${toDbName(name) || '…'}`"></code></p>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Kind</legend>
+          <select class="select w-full" x-model="kind" title="Decides how uploads update it">
+            {% for value, label, help in kinds %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+          <p class="label whitespace-normal">
+            {% for value, label, help in kinds %}<span x-show="kind === '{{ value }}'">{{ help }}</span>{% endfor %}
+            <span x-show="kind === 'snapshot'">You pick the As-of date at each upload, so no date column is needed for it.</span>
+          </p>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Description <span class="font-normal text-base-content/50">(optional)</span></legend>
+          <textarea class="textarea h-16 w-full" x-model="description" placeholder="e.g. Ledger list exported from Tally every month"></textarea>
+        </fieldset>
+      </div>
+    </div>
+
+    <div class="card border border-base-300 bg-base-100">
+      <div class="card-body p-3 sm:p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="font-semibold">Columns <span class="font-normal text-base-content/50" x-text="`(${columns.length})`"></span></h2>
+          <p class="text-xs text-base-content/60"><strong>Key</strong> = identifies one row (e.g. Account code, or Voucher no + Line no).</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th class="w-8">#</th>
+                <th class="min-w-56">Column name</th>
+                <th class="min-w-44"><span class="tooltip tooltip-bottom" data-tip="What kind of values the column holds">Type</span></th>
+                <th class="text-center"><span class="tooltip tooltip-bottom" data-tip="Identifies one row. Uploads use it to tell new rows from changed ones. Always required.">Key</span></th>
+                <th class="text-center"><span class="tooltip tooltip-bottom" data-tip="Every row must have a value">Required</span></th>
+                <th class="text-center"><span class="tooltip tooltip-bottom" data-tip="No two rows may have the same value (blanks allowed)">Unique</span></th>
+                <th class="min-w-44"><span class="tooltip tooltip-bottom" data-tip="Each value must exist in another dataset's key, e.g. Account code must be in Chart of Accounts">Links to</span></th>
+                <th class="min-w-44">Help text</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(column, index) in columns" :key="column._uid">
+                <tr :class="rowErrors[column._uid] ? 'bg-error/5' : ''">
+                  <td class="align-top pt-4 text-base-content/50" x-text="index + 1"></td>
+                  <td class="align-top">
+                    <input class="input input-sm w-full" x-model="column.label" @input="labelChanged(column)" maxlength="100" placeholder="e.g. Ledger Name" title="The name people see">
+                    <div class="mt-1 flex items-center gap-1 text-xs text-base-content/60">
+                      <span title="Name in the database (made from the label; small letters, digits and _)">db:</span>
+                      <input class="input input-xs w-40 font-mono" x-model="column.name" @input="column._nameTouched = true" maxlength="50" title="Name in the database. Made from the label; change it only if you need to.">
+                    </div>
+                    <template x-if="column.samples && column.samples.length"><div class="mt-1 truncate text-xs text-base-content/50" x-text="'e.g. ' + column.samples.join(', ')"></div></template>
+                    <template x-for="message in (rowErrors[column._uid] || [])"><div class="mt-1 text-xs text-error" x-text="message"></div></template>
+                  </td>
+                  <td class="align-top">
+                    <select class="select select-sm w-full" x-model="column.data_type" :title="typeHelp(column.data_type)" :disabled="!!column.references">
+                      <template x-for="type in types" :key="type.value"><option :value="type.value" x-text="type.label" :selected="type.value === column.data_type"></option></template>
+                    </select>
+                    <template x-if="column.data_type === 'decimal'">
+                      <label class="mt-1 flex items-center gap-1 text-xs text-base-content/60">Decimal places
+                        <input type="number" min="0" max="6" class="input input-xs w-14" x-model.number="column.decimal_places" :disabled="!!column.references" title="Digits after the point: 2 for money, up to 6 for rates">
+                      </label>
+                    </template>
+                  </td>
+                  <td class="align-top pt-3 text-center"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" x-model="column.is_key" @change="if (column.is_key) column.required = true" :title="`${column.label || 'This column'} identifies one row`"></td>
+                  <td class="align-top pt-3 text-center"><input type="checkbox" class="checkbox checkbox-sm" x-model="column.required" :disabled="column.is_key" title="Every row must have a value (key columns always do)"></td>
+                  <td class="align-top pt-3 text-center"><input type="checkbox" class="checkbox checkbox-sm" x-model="column.unique" title="No two rows may share a value"></td>
+                  <td class="align-top">
+                    <select class="select select-sm w-full" x-model.number="column.references" @change="linkChanged(column)" title="Values must exist in this dataset's key">
+                      <option :value="0">— none —</option>
+                      <template x-for="target in targets" :key="target.id">
+                        <option :value="target.id" :disabled="!target.usable" :selected="target.id === column.references" x-text="target.usable ? `${target.name} (${target.key_label})` : `${target.name} (needs a one-column key)`"></option>
+                      </template>
+                    </select>
+                  </td>
+                  <td class="align-top"><input class="input input-sm w-full" x-model="column.help_text" maxlength="200" placeholder="optional" title="A hint shown on the Excel template and upload screens"></td>
+                  <td class="align-top whitespace-nowrap">
+                    <button type="button" class="btn btn-ghost btn-xs" @click="move(index, -1)" :disabled="index === 0" title="Move up">↑</button>
+                    <button type="button" class="btn btn-ghost btn-xs" @click="move(index, 1)" :disabled="index === columns.length - 1" title="Move down">↓</button>
+                    <button type="button" class="btn btn-ghost btn-xs text-error" @click="remove(index)" :disabled="columns.length === 1" title="Remove this column{% if row_count %} (its saved values are deleted){% endif %}">✕</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div><button type="button" class="btn btn-sm btn-ghost" @click="addColumn()" title="Add a column at the end">+ Add column</button></div>
+      </div>
+    </div>
+
+    <div class="mt-4 space-y-2">
+      <template x-for="warning in warnings()"><div role="alert" class="alert alert-warning alert-soft text-sm"><span x-text="warning"></span></div></template>
+    </div>
+
+    <div class="sticky bottom-0 mt-4 flex justify-end gap-2 border-t border-base-300 bg-base-200/90 py-3 backdrop-blur">
+      <a href="{% url 'findata:datasets' %}" class="btn btn-ghost">Cancel</a>
+      <button class="btn btn-primary" title="Save the definition and build / change its database table">{% if dataset %}Save changes{% else %}Create dataset{% endif %}</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function datasetEditor() {
+  const read = (id) => JSON.parse(document.getElementById(id).textContent);
+  const payload = read("fd-payload");
+  const serverErrors = read("fd-row-errors");
+  let uid = 0;
+  const prepare = (column) => ({ ...column, references: column.references || 0, _uid: ++uid, _nameTouched: !!column.id });
+  const columns = payload.columns.map(prepare);
+  const rowErrors = {};
+  columns.forEach((column, index) => { if (serverErrors[index]) rowErrors[column._uid] = serverErrors[index]; });
+  const sheets = read("fd-sheets");
+  return {
+    name: payload.name, kind: payload.kind, description: payload.description,
+    columns, rowErrors, targets: read("fd-targets"), types: read("fd-types"),
+    reserved: read("fd-reserved"), sheets, sheetIndex: 0, keyNote: sheets.length ? sheets[0].key_note : "",
+    toDbName(label) {
+      let name = (label || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+      if (name && !/^[a-z]/.test(name)) name = "c_" + name;
+      if (this.reserved.includes(name)) name += "_name";
+      return name.slice(0, 50).replace(/_+$/, "");
+    },
+    labelChanged(column) { if (!column._nameTouched) column.name = this.toDbName(column.label); },
+    typeHelp(value) { const type = this.types.find((t) => t.value === value); return type ? type.help : ""; },
+    linkChanged(column) {
+      const target = this.targets.find((t) => t.id === column.references);
+      if (target) { column.data_type = target.data_type; column.decimal_places = target.decimal_places; }
+    },
+    addColumn() {
+      this.columns.push(prepare({ id: null, label: "", name: "", data_type: "text", decimal_places: 2, is_key: false, required: false, unique: false, references: 0, help_text: "", samples: [] }));
+    },
+    remove(index) { this.columns.splice(index, 1); },
+    move(index, step) { const [column] = this.columns.splice(index, 1); this.columns.splice(index + step, 0, column); },
+    useSheet() {
+      const sheet = this.sheets[this.sheetIndex];
+      this.name = sheet.name; this.columns = sheet.columns.map(prepare); this.keyNote = sheet.key_note; this.rowErrors = {};
+    },
+    warnings() {
+      const found = [];
+      if (!this.columns.some((c) => c.is_key)) found.push("No key yet: tick Key on the column(s) that identify one row.");
+      const names = this.columns.map((c) => c.name).filter(Boolean);
+      const repeated = names.filter((n, i) => names.indexOf(n) !== i);
+      if (repeated.length) found.push(`Database name used twice: ${[...new Set(repeated)].join(", ")}.`);
+      if (this.columns.some((c) => !c.label.trim())) found.push("Some columns have no name.");
+      return found;
+    },
+    serialize() {
+      const columns = this.columns.map(({ _uid, _nameTouched, ...column }) => ({ ...column, references: column.references || null }));
+      this.$refs.definition.value = JSON.stringify({ name: this.name, kind: this.kind, description: this.description, columns });
+    },
+  };
+}
+</script>
+{% endblock %}

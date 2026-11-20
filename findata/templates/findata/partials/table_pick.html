@@ -1,0 +1,14 @@
+{% if error %}
+  <label class="fieldset">
+    <span class="fieldset-legend">Table</span>
+    <input name="table" value="{{ chosen }}" class="input w-full" placeholder="e.g. vouchers" title="Type the table name">
+    <span class="label text-error">{{ error }}</span>
+  </label>
+{% else %}
+  <label class="fieldset">
+    <span class="fieldset-legend">Table ({{ tables|length }} found)</span>
+    <select name="table" class="select w-full" title="Tables and views you may read. Row counts are the server's estimate.">
+      {% for item in tables %}<option value="{{ item.name }}" {% if item.name == chosen %}selected{% endif %}>{{ item.name }}{% if item.kind == "view" %} (view){% endif %}{% if item.row_count is not None %} · about {{ item.row_count }} rows{% endif %}</option>{% endfor %}
+    </select>
+  </label>
+{% endif %}
