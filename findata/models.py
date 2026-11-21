@@ -190,13 +190,8 @@ class Upload(models.Model):
         REMOVE_DATE: "Every row of one As-of date was removed.",
     }
 
-    FILE, SQLITE, SERVER, API = "file", "sqlite", "server", "api"
-    SOURCE_CHOICES = [
-        (FILE, "File"),
-        (SQLITE, "SQLite file"),
-        (SERVER, "Database server"),
-        (API, "API"),
-    ]
+    FILE, SQLITE, SERVER = "file", "sqlite", "server"
+    SOURCE_CHOICES = [(FILE, "File"), (SQLITE, "SQLite file"), (SERVER, "Database server")]
 
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="uploads")
     user = models.CharField(max_length=150, blank=True)
@@ -239,7 +234,7 @@ class Upload(models.Model):
 
     @property
     def from_database(self) -> bool:
-        return self.source_kind in (self.SQLITE, self.SERVER)
+        return self.source_kind != self.FILE
 
     @property
     def stage_table(self) -> str:
@@ -253,43 +248,3 @@ class Upload(models.Model):
     def needs_delete_tick(self) -> bool:
         """Full refresh that deletes more than half the saved rows: ask once more."""
         return self.deleted > 0 and self.deleted * 2 > self.existing
-
-
-class ApiKey(models.Model):
-    """A key another system sends with API calls, e.g. "Tally sync". It works for one company.
-    Only a hash of the key is kept: the key itself is shown once, when it is made."""
-
-    company_key = models.CharField(max_length=40, db_index=True)
-    name = models.CharField(max_length=100)
-    prefix = models.CharField(max_length=11, unique=True)  # "fd_" + 8 characters, to find the key
-    key_hash = models.CharField(max_length=64)  # SHA-256 of the whole key
-    can_send = models.BooleanField(default=False)
-    can_read = models.BooleanField(default=False)
-    created_by = models.CharField(max_length=150, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_used_at = models.DateTimeField(null=True, blank=True)
-    expires_on = models.DateField(null=True, blank=True)  # the last day it works
-    active = models.BooleanField(default=True)
-
-    class Meta:
-        ordering = ["name"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["company_key", "name"], name="findata_unique_api_key_name"
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.name} ({self.prefix}…)"
-
-    @property
-    def rights(self) -> str:
-        """e.g. "Send + Read"."""
-        return " + ".join(
-            label for label, on in (("Send", self.can_send), ("Read", self.can_read)) if on
-        )
-
-    @property
-    def as_user(self) -> str:
-        """Who an upload by this key is, in History: "API: Tally sync"."""
-        return f"API: {self.name}"[:150]

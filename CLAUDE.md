@@ -4,4 +4,4 @@ Scope: `docs/project.md`. Current plan: `docs/plan.md`. File loading comes from 
 Every phase: plan → grill-me questions → user confirms → build → test.
 
 # Current phase
-Phase 6 done (API: keys, send rows with checks / dry run, read rows with filters, API help; 204 tests). Phase 5 skipped (use My Insights → From database). All roadmap phases done.
+Phase 4 done (dataset page with tabs Data · Changes · History · Dates, row history, change log viewer, Recent uploads; 163 tests). Phase 5 skipped (use My Insights → From database). Phase 6 (API) dropped. No phase in progress.

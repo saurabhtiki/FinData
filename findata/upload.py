@@ -73,10 +73,6 @@ class UploadProblems(Exception):
         self.problems = problems
 
 
-class UploadBusy(UploadProblems):
-    """Another upload of the same dataset is running."""
-
-
 def problem(text: str, row: int | None = None, key: str = "") -> dict:
     return {"row": row, "text": text, "key": key}
 
@@ -203,7 +199,7 @@ def _lock(dataset: Dataset) -> None:
     got = _run(sql.SQL("SELECT pg_try_advisory_xact_lock(%s, %s)"), (LOCK_SPACE, dataset.id))[0][0]
     if not got:
         logger.warning("Upload into %s refused: another one is running", dataset.name)
-        raise UploadBusy(
+        raise UploadProblems(
             [problem(f"Another upload of {dataset.name} is in progress. Try again in a minute.")]
         )
 

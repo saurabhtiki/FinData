@@ -8,7 +8,6 @@ FINDATA = {
     "CAN_UPLOAD": "myapp.hooks.can_upload",          # request -> bool
     "ALLOW_DB_CONNECT": True,
     "DB_ALLOWED_HOSTS": ["192.168.1.20"],
-    "ALLOW_API": True,
 }
 """
 
@@ -36,12 +35,6 @@ DEFAULTS = {
     "SQL_MAX_ROWS": 500_000,  # one pull reads at most this many rows
     "SQL_QUERY_SECONDS": 60,  # a query running longer is stopped
     "SQL_CONNECT_SECONDS": 10,  # wait this long for the server to answer
-    # The API (send / read rows with a key). Off until the admin turns it on.
-    "ALLOW_API": False,
-    # Refuse API calls over plain http://, so a key can't be read on the way.
-    "API_REQUIRE_HTTPS": True,
-    "API_MAX_ROWS": 200_000,  # rows in one JSON call (a file uses the upload size limit)
-    "API_PAGE_ROWS": 1_000,  # rows per page when reading
 }
 
 

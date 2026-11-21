@@ -9,10 +9,8 @@
   </div>
   <div class="flex flex-wrap gap-2">
     <a href="{% url 'findata:recent_uploads' %}" class="btn" title="Every upload into any dataset of {{ company.name }}, newest first">Recent uploads</a>
-    {% if api_on %}<a href="{% url 'findata:api_help' %}" class="btn" title="How another system sends rows to FinData or reads them: column names and ready-to-copy examples">API help</a>{% endif %}
   {% if can_edit %}
     {% if servers_on %}<a href="{% url 'findata:connections' %}" class="btn" title="Database servers this company reads from (no passwords are saved)">Connections</a>{% endif %}
-    {% if api_on %}<a href="{% url 'findata:api_keys' %}" class="btn" title="Keys other systems (e.g. a Tally sync script) use to send or read {{ company.name }}'s data">API keys</a>{% endif %}
     <a href="{% url 'findata:new' %}" class="btn btn-primary" title="Define a new dataset: from a sample file, a copy, or from scratch">+ New dataset</a>
   {% endif %}
   </div>

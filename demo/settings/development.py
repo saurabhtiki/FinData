@@ -5,6 +5,3 @@ WHITENOISE_AUTOREFRESH = True
 
 # Demo: reading from database servers is on, for this machine only.
 FINDATA = {**FINDATA, "ALLOW_DB_CONNECT": True, "DB_ALLOWED_HOSTS": ["localhost", "127.0.0.1"]}
-
-# Demo: the API is on; plain http:// is allowed because the demo runs on this machine only.
-FINDATA = {**FINDATA, "ALLOW_API": True, "API_REQUIRE_HTTPS": False}

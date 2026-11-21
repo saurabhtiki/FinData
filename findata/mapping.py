@@ -35,9 +35,7 @@ def _plain(text: str) -> str:
     return naming.to_db_name(text).replace("_", "")
 
 
-def guess(dataset: Dataset, headers: list[str], close: bool = True) -> dict[str, str]:
-    """File header -> column name ("" = skip): the saved mapping, then the same name or label,
-    then (close=True, the screen only, where a person checks it) a similar name."""
+def guess(dataset: Dataset, headers: list[str]) -> dict[str, str]:
     columns = list(dataset.columns.all())
     names = {name for name, _, _ in targets(dataset)}
     remembered = dataset.remembered_mapping or {}
@@ -69,12 +67,9 @@ def guess(dataset: Dataset, headers: list[str], close: bool = True) -> dict[str,
     for header in headers:
         if header in mapping:
             continue
-        if not close:
-            take(header, "")
-            continue
         free = {plain: name for plain, name in by_plain.items() if name not in used}
-        similar = difflib.get_close_matches(_plain(header), list(free), n=1, cutoff=CLOSE_ENOUGH)
-        take(header, free[similar[0]] if similar else "")
+        close = difflib.get_close_matches(_plain(header), list(free), n=1, cutoff=CLOSE_ENOUGH)
+        take(header, free[close[0]] if close else "")
     return mapping
 
 

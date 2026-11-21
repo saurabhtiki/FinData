@@ -143,7 +143,6 @@ def datasets(request):
         "can_upload": companies.can_upload(request),
         "kind_help": Dataset.KIND_HELP,
         "servers_on": servers_on,
-        "api_on": conf.get("ALLOW_API"),
     }
     return table_response(
         request, table, "findata/datasets.html", "findata/partials/datasets_table.html", context
