@@ -35,6 +35,14 @@ DEFAULTS = {
     "SQL_MAX_ROWS": 500_000,  # one pull reads at most this many rows
     "SQL_QUERY_SECONDS": 60,  # a query running longer is stopped
     "SQL_CONNECT_SECONDS": 10,  # wait this long for the server to answer
+    # Fetching rows from another application's JSON API (GET / POST). The reply's size limit
+    # is data-core's MAX_FILE_MB, like a file.
+    "ALLOW_API_FETCH": True,
+    # True: refuse addresses inside the network or on this server (localhost, 10.x,
+    # 192.168.x …) unless their host is in API_ALLOWED_HOSTS, e.g. ["erp.local"].
+    "API_BLOCK_INTERNAL": False,
+    "API_ALLOWED_HOSTS": [],
+    "API_TIMEOUT_SECONDS": 30,
 }
 
 

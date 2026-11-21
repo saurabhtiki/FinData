@@ -4,4 +4,4 @@ Scope: `docs/project.md`. Current plan: `docs/plan.md`. File loading comes from 
 Every phase: plan → grill-me questions → user confirms → build → test.
 
 # Current phase
-Phase 4 done (dataset page with tabs Data · Changes · History · Dates, row history, change log viewer, Recent uploads; 163 tests). Phase 5 skipped (use My Insights → From database). Phase 6 (API) dropped. No phase in progress.
+Phase 6 done (API tab: fetch JSON rows from another app with GET / POST, Test, Fetch again; 178 tests). Phase 5 skipped (use My Insights → From database). No phase in progress.

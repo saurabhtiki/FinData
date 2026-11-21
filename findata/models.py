@@ -42,7 +42,9 @@ class Dataset(models.Model):
     # File header -> column name ("" = skip), so next month's file maps itself.
     remembered_mapping = models.JSONField(default=dict, blank=True)
     # The last database read, for "Pull again": {"kind": "server", "connection": 3,
-    # "table": "vouchers", "select": ""} (kind "sqlite" only pre-fills the table pick).
+    # "table": "vouchers", "select": ""} (kind "sqlite" only pre-fills the table pick),
+    # or the last API fetch: {"kind": "api", "url": ..., "method": "GET", "body": "",
+    # "rows_at": "data.orders"} (never the headers: they hold the key).
     remembered_source = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)  # the definition's last change
@@ -190,8 +192,13 @@ class Upload(models.Model):
         REMOVE_DATE: "Every row of one As-of date was removed.",
     }
 
-    FILE, SQLITE, SERVER = "file", "sqlite", "server"
-    SOURCE_CHOICES = [(FILE, "File"), (SQLITE, "SQLite file"), (SERVER, "Database server")]
+    FILE, SQLITE, SERVER, API = "file", "sqlite", "server", "api"
+    SOURCE_CHOICES = [
+        (FILE, "File"),
+        (SQLITE, "SQLite file"),
+        (SERVER, "Database server"),
+        (API, "API"),
+    ]
 
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name="uploads")
     user = models.CharField(max_length=150, blank=True)
@@ -204,6 +211,9 @@ class Upload(models.Model):
     source_table = models.CharField(max_length=255, blank=True)  # e.g. vouchers
     select_sql = models.TextField(blank=True)  # the SELECT that was run
     sheet = models.CharField(max_length=255, blank=True)
+    rows_at = models.CharField(
+        max_length=255, blank=True
+    )  # API: where the rows are, e.g. data.orders
     # Periodic reports: the date picked for the whole file (empty when a file column has it),
     # and per date touched: [{"date": "2026-03-31", "added": 2, "changed": 5, "deleted": 1,
     # "existing": 120}] ("existing" 0 = a new date).
@@ -234,7 +244,7 @@ class Upload(models.Model):
 
     @property
     def from_database(self) -> bool:
-        return self.source_kind != self.FILE
+        return self.source_kind in (self.SQLITE, self.SERVER)
 
     @property
     def stage_table(self) -> str:

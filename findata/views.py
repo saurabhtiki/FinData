@@ -13,8 +13,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 from django_datatable.datatable import CHOICE, DATE, NUMBER, Column, RowsTable, table_response
 
+from . import api_source, conf, db_source, definition, naming
 from . import company as companies
-from . import conf, db_source, definition, naming
 from .models import Dataset, DatasetColumn, DbConnection
 from .sample import SampleRejected, guess_from_file
 from .schema_builder import (
@@ -113,7 +113,7 @@ def datasets(request):
                 "rows": counts.get(dataset.table_name, 0),
                 "updated": timezone.localdate(dataset.updated_at),
                 "description": dataset.description,
-                "pull_again": servers_on and dataset.remembered_source.get("connection") in saved,
+                "pull_again": api_source.again_tab(dataset, saved),
             }
         )
     table = RowsTable(

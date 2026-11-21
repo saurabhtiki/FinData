@@ -15,11 +15,10 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django_datatable.datatable import CHOICE, Column, RowsTable, table_response
 
-from . import conf, db_source, mapping
+from . import conf, db_source
 from . import upload as uploads
 from .models import DbConnection, Upload
-from .schema_builder import AS_OF
-from .upload_views import _failed, _own_upload, _user
+from .upload_views import _failed, _own_upload, _straight_to_preview, _user
 from .views import _own_dataset, _page, company_required
 
 logger = logging.getLogger(__name__)
@@ -259,38 +258,6 @@ def pull(request, pk: int):
     if request.POST.get("again") == "1":
         return _straight_to_preview(upload)
     return redirect("findata:upload_map", upload.id)
-
-
-def _straight_to_preview(upload: Upload):
-    """Pull again: the remembered mapping and the last mode, then the preview. Anything
-    unclear (a new column, a problem) stops on the mapping or problems page instead."""
-    dataset = upload.dataset
-    previous = uploads.latest_done(dataset)
-    if dataset.is_snapshot:
-        mode = Upload.DATES
-    elif previous and previous.mode in (Upload.ADD_UPDATE, Upload.FULL_REFRESH):
-        mode = previous.mode
-    else:
-        mode = Upload.ADD_UPDATE
-    try:
-        with uploads.opened(upload) as sheets:
-            sheet = sheets[0]
-            chosen = mapping.guess(dataset, sheet.headers)
-            new_column = any(h not in dataset.remembered_mapping for h in sheet.headers)
-            from_column = AS_OF in chosen.values()
-            # A periodic report needs exactly one source for its date: a typed date and a
-            # date column both (or neither) → the mapping page, where the user picks.
-            unclear_date = dataset.is_snapshot and bool(upload.as_of_date) == from_column
-            if new_column or unclear_date or mapping.problems(dataset, chosen):
-                upload.mode = mode
-                upload.save(update_fields=["mode"])
-                return redirect("findata:upload_map", upload.id)
-            upload.sheet, upload.mode, upload.mapping = sheet.label, mode, chosen
-            uploads.stage(upload, sheet, chosen, mode)
-    except uploads.UploadProblems as error:
-        upload.save(update_fields=["sheet", "mode", "mapping"])
-        return _failed(upload, error.problems)
-    return redirect("findata:upload_preview", upload.id)
 
 
 # ---------- an uploaded SQLite file: pick the table ----------

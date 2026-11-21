@@ -1,7 +1,7 @@
 {% extends base_template %}
 {% block title %}Match columns · {{ dataset.name }}{% endblock %}
 {% block content %}
-{% if upload.source_kind == "sqlite" %}<a href="{% url 'findata:upload_sqlite' upload.id %}" class="btn btn-ghost btn-sm mb-3" title="Pick a different table or query">← Different table</a>{% elif upload.from_database %}<a href="{% url 'findata:upload' dataset.id %}?tab=database" class="btn btn-ghost btn-sm mb-3" title="Read from the database again">← Read again</a>{% else %}<a href="{% url 'findata:upload' dataset.id %}" class="btn btn-ghost btn-sm mb-3" title="Pick a different file">← Different file</a>{% endif %}
+{% if upload.source_kind == "sqlite" %}<a href="{% url 'findata:upload_sqlite' upload.id %}" class="btn btn-ghost btn-sm mb-3" title="Pick a different table or query">← Different table</a>{% elif upload.source_kind == "api" %}<a href="{% url 'findata:upload' dataset.id %}?tab=api" class="btn btn-ghost btn-sm mb-3" title="Ask the API again">← Fetch again</a>{% elif upload.from_database %}<a href="{% url 'findata:upload' dataset.id %}?tab=database" class="btn btn-ghost btn-sm mb-3" title="Read from the database again">← Read again</a>{% else %}<a href="{% url 'findata:upload' dataset.id %}" class="btn btn-ghost btn-sm mb-3" title="Pick a different file">← Different file</a>{% endif %}
 {% include "findata/partials/steps.html" with step=2 %}
 <div class="mb-4">
   <h1 class="text-2xl font-semibold tracking-tight">Match columns</h1>

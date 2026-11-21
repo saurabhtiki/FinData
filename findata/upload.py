@@ -90,6 +90,8 @@ def file_path(upload: Upload) -> Path:
     """The uploaded file; for a server pull, the snapshot of what was read."""
     if upload.source_kind == Upload.SERVER:
         return _folder() / f"{upload.id}.snapshot.sqlite"
+    if upload.source_kind == Upload.API:
+        return _folder() / f"{upload.id}.json"
     return _folder() / f"{upload.id}{Path(upload.file_name).suffix.lower()}"
 
 
@@ -140,13 +142,19 @@ def opened(upload: Upload):
     store = DataStore(memory_mb=READ_STORE_MB)
     try:
         try:
-            loaded = load_file(store, upload.file_name, path.read_bytes(), keep_text=True)
+            # An API reply is read as a .json file, from where its rows are
+            name = (
+                f"{upload.file_name}.json" if upload.source_kind == Upload.API else upload.file_name
+            )
+            loaded = load_file(
+                store, name, path.read_bytes(), keep_text=True, rows_at=upload.rows_at
+            )
         except UploadRejected as error:
             logger.warning("Upload %s rejected by the reader: %s", upload.id, error)
             raise UploadProblems([problem(str(error))]) from error
         sheets = [
             Sheet(
-                label=item.source_file,
+                label=item.source_file.replace(name, upload.file_name, 1),
                 headers=[profile.name for profile in item.columns],
                 samples={profile.name: profile.samples[:3] for profile in item.columns},
                 row_count=item.row_count,

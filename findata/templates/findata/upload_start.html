@@ -28,7 +28,63 @@
   <div role="tablist" class="tabs tabs-box mb-4 w-fit">
     <button type="button" role="tab" class="tab" :class="tab === 'file' && 'tab-active'" @click="tab = 'file'" title="A CSV, Excel or JSON file">File</button>
     <button type="button" role="tab" class="tab" :class="tab === 'database' && 'tab-active'" @click="tab = 'database'" title="A SQLite file, or a saved database server">Database</button>
+    {% if api_on %}<button type="button" role="tab" class="tab" :class="tab === 'api' && 'tab-active'" @click="tab = 'api'" title="Ask another application's web API for its rows (JSON)">API</button>{% endif %}
   </div>
+
+  {# ---------- API ---------- #}
+  {% if api_on %}
+  <form x-show="tab === 'api'" x-cloak method="post" action="{% url 'findata:upload_api' dataset.id %}" class="card border border-base-300 bg-base-100" autocomplete="off"
+        x-data="{ busy: false, method: '{{ api.method|default:'GET'|escapejs }}' }" @submit="busy = true">
+    {% csrf_token %}
+    {% if again %}<input type="hidden" name="again" value="1">{% endif %}
+    {% if dataset.is_snapshot %}<input type="hidden" name="as_of" :value="asOf">{% endif %}
+    <div class="card-body">
+      <h2 class="card-title text-base">From an API{% if again %} · fetch again{% endif %}</h2>
+      {% if again %}<p class="text-sm text-base-content/70">The same address as last time. Type the headers (the key){% if dataset.is_snapshot %}, check the As-of date above,{% endif %} and you go straight to the preview (if the columns are the same).</p>
+      {% else %}<p class="text-sm text-base-content/70">Another application answers with JSON rows, e.g. <code>GET https://erp.example.com/api/ledgers</code>. FinData asks once and reads the reply like a JSON file.</p>{% endif %}
+      <div class="grid gap-3 sm:grid-cols-[8rem_1fr]">
+        <label class="fieldset">
+          <span class="fieldset-legend">Method</span>
+          <select name="method" class="select w-full" x-model="method" title="GET reads; POST sends a JSON body (some APIs want the filters there)">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+          </select>
+        </label>
+        <label class="fieldset">
+          <span class="fieldset-legend">URL</span>
+          <input type="url" name="url" required value="{{ api.url }}" class="input w-full" placeholder="https://erp.example.com/api/ledgers?from=2026-04-01"
+                 title="The full address, starting with https:// (or http://). It is remembered for Fetch again, so don't put a key in it: use Headers.">
+          <span class="label whitespace-normal">Remembered for next time: put keys in Headers, not here.</span>
+        </label>
+      </div>
+      <label class="fieldset">
+        <span class="fieldset-legend">Headers <span class="font-normal text-base-content/60">(optional)</span></span>
+        <textarea name="headers" rows="2" class="textarea w-full font-mono text-sm" placeholder="Authorization: Bearer abc123" {% if again %}autofocus{% endif %}
+                  title="One per line, as Name: value. Usually the key. Used for this fetch only, never saved."></textarea>
+        <span class="label">One per line, e.g. <code>X-Api-Key: abc123</code>. Used for this fetch only, never saved.</span>
+      </label>
+      <label class="fieldset" x-show="method === 'POST'">
+        <span class="fieldset-legend">Body <span class="font-normal text-base-content/60">(JSON)</span></span>
+        <textarea name="body" rows="3" class="textarea w-full font-mono text-sm" placeholder='{"from": "2026-04-01", "to": "2026-04-30"}' :disabled="method !== 'POST'"
+                  title="What to send with POST, as JSON. Empty sends {}.">{{ api.body }}</textarea>
+      </label>
+      <label class="fieldset">
+        <span class="fieldset-legend">Rows at <span class="font-normal text-base-content/60">(optional)</span></span>
+        <input name="rows_at" value="{{ api.rows_at }}" class="input w-full sm:w-80" placeholder="e.g. data.ledgers"
+               title="Where the list of rows is in the reply, e.g. data.ledgers for {&quot;data&quot;: {&quot;ledgers&quot;: [...]}}. Empty: FinData finds the lists itself.">
+        <span class="label">Empty: FinData finds the lists itself. Press Test to see them.</span>
+      </label>
+      <div id="findata-api-test" class="mt-1"></div>
+      <div class="card-actions mt-2 justify-end">
+        <button type="button" class="btn" hx-post="{% url 'findata:upload_api_test' dataset.id %}" hx-include="closest form" hx-target="#findata-api-test" hx-indicator="#findata-api-busy"
+                title="Ask the API now and show what came back: the lists, rows and columns. Nothing is saved.">
+          <span id="findata-api-busy" class="loading loading-spinner loading-sm htmx-indicator"></span>Test
+        </button>
+        <button class="btn btn-primary" :disabled="busy"><span x-show="busy" class="loading loading-spinner loading-sm"></span>{% if again %}Fetch and preview{% else %}Fetch rows: match columns{% endif %}</button>
+      </div>
+    </div>
+  </form>
+  {% endif %}
 
   {# ---------- File ---------- #}
   <form x-show="tab === 'file'" method="post" enctype="multipart/form-data" class="card border border-base-300 bg-base-100" x-data="{ busy: false }" @submit="busy = true">

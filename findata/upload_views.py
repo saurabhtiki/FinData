@@ -17,8 +17,8 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from django_datatable.datatable import CHOICE, DATE, NUMBER, TEXT, Column, RowsTable, table_response
 from openpyxl import Workbook
 
+from . import api_source, conf, db_source, mapping, periods
 from . import company as companies
-from . import conf, db_source, mapping, periods
 from . import upload as uploads
 from .browse_views import page_context
 from .models import Dataset, DatasetColumn, DbConnection, Upload
@@ -113,15 +113,19 @@ def start(request, pk: int):
 
 
 def _start_context(request, dataset: Dataset) -> dict:
-    """The File and Database tabs. "Pull again" opens Database with the last read filled in."""
+    """The File, Database and API tabs. "Pull again" / "Fetch again" open Database / API with
+    the last read filled in (never a password or the API's headers)."""
     remembered = dataset.remembered_source or {}
     saved = DbConnection.objects.filter(company_key=request.findata_company.key)
     servers_on = db_source.servers_allowed()
+    api_on = api_source.allowed()
     tab = request.GET.get("tab", "file")
     return {
         "company": request.findata_company,
         "dataset": dataset,
-        "tab": tab if tab in ("file", "database") else "file",
+        "tab": tab if tab in ("file", "database") or (tab == "api" and api_on) else "file",
+        "api_on": api_on,
+        "api": remembered if remembered.get("kind") == Upload.API else {"method": "GET"},
         "servers_on": servers_on,
         "connections": list(saved) if servers_on else [],
         "can_edit": companies.can_edit_definitions(request),
@@ -259,6 +263,45 @@ def _failed(upload: Upload, found: list[dict]):
     upload.problems = found
     upload.save(update_fields=["problems"])
     return redirect("findata:upload_problems", upload.id)
+
+
+def _straight_to_preview(upload: Upload):
+    """Pull / fetch again: the remembered mapping and the last mode, then the preview. Anything
+    unclear (a new column, a problem) stops on the mapping or problems page instead."""
+    dataset = upload.dataset
+    previous = uploads.latest_done(dataset)
+    if dataset.is_snapshot:
+        mode = Upload.DATES
+    elif previous and previous.mode in (Upload.ADD_UPDATE, Upload.FULL_REFRESH):
+        mode = previous.mode
+    else:
+        mode = Upload.ADD_UPDATE
+    try:
+        with uploads.opened(upload) as sheets:
+            # The list / sheet picked last time (an API reply can have several)
+            wanted = previous.sheet if previous else ""
+            sheet = next((item for item in sheets if item.label == wanted), None)
+            if sheet is None and len(sheets) > 1:
+                upload.mode = mode
+                upload.save(update_fields=["mode"])
+                return redirect("findata:upload_map", upload.id)
+            sheet = sheet or sheets[0]
+            chosen = mapping.guess(dataset, sheet.headers)
+            new_column = any(h not in dataset.remembered_mapping for h in sheet.headers)
+            from_column = AS_OF in chosen.values()
+            # A periodic report needs exactly one source for its date: a typed date and a
+            # date column both (or neither) → the mapping page, where the user picks.
+            unclear_date = dataset.is_snapshot and bool(upload.as_of_date) == from_column
+            if new_column or unclear_date or mapping.problems(dataset, chosen):
+                upload.mode = mode
+                upload.save(update_fields=["mode"])
+                return redirect("findata:upload_map", upload.id)
+            upload.sheet, upload.mode, upload.mapping = sheet.label, mode, chosen
+            uploads.stage(upload, sheet, chosen, mode)
+    except uploads.UploadProblems as error:
+        upload.save(update_fields=["sheet", "mode", "mapping"])
+        return _failed(upload, error.problems)
+    return redirect("findata:upload_preview", upload.id)
 
 
 def _problems_page(request, upload: Upload, problems: list[dict]):

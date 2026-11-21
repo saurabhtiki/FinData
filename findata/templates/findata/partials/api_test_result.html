@@ -1,0 +1,12 @@
+{% if ok %}
+<div role="alert" class="alert alert-success alert-soft text-sm">
+  <div class="space-y-1">
+    {% for item in lists %}
+      <p><strong>{{ item.rows_at }}</strong>: {{ item.rows }} row{{ item.rows|pluralize }}{% if item.columns %} · {{ item.columns|join:", " }}{% endif %}{% for path, count in item.children %} · list <strong>{{ path }}</strong> ({{ count }} row{{ count|pluralize }}){% endfor %}</p>
+    {% endfor %}
+    {% if lists|length > 1 %}<p class="text-base-content/70">Several lists: you pick one on the next screen, or type one in Rows at.</p>{% endif %}
+  </div>
+</div>
+{% else %}
+<div role="alert" class="alert alert-error alert-soft text-sm"><span>{{ text }}</span></div>
+{% endif %}

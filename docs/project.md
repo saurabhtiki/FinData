@@ -7,7 +7,7 @@ controlling and analysis. Later, queries and dashboards (My Insights) read from 
 Unlike Transform Data and My Insights (data only in memory), **FinData keeps data at rest** in PostgreSQL.
 
 ```
-define datasets → upload files (or a SQL database) → map columns → check → preview changes → confirm → saved
+define datasets → upload files (or a SQL database, or another app's JSON API) → map columns → check → preview changes → confirm → saved
 ```
 
 ## Three kinds of dataset
@@ -67,6 +67,6 @@ FINDATA = {
 3. Periodic reports: as-of date uploads, "dates loaded" calendar (done).
 4. Browse data, upload history, change log viewer (done).
 5. Reporting bridge (skipped: use My Insights → From database; plan kept in `plan-phase-5.md`).
-6. API (dropped: not wanted).
+6. Pull rows from another application's JSON API (GET / POST, Fetch again) (done). The earlier "API keys to push data in" idea was dropped.
 
 Every phase: plan → questions (grill-me) → user confirms → build → test.

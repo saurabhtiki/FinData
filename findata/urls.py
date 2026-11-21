@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import browse_views, db_views, upload_views, views
+from . import api_views, browse_views, db_views, upload_views, views
 
 app_name = "findata"
 
@@ -25,6 +25,8 @@ urlpatterns = [
     path("<int:pk>/dates/<str:day>/remove/", upload_views.remove_date, name="date_remove"),
     path("<int:pk>/upload/database/", db_views.pull, name="upload_pull"),
     path("<int:pk>/upload/database/tables/", db_views.server_tables, name="upload_tables"),
+    path("<int:pk>/upload/api/", api_views.api_fetch, name="upload_api"),
+    path("<int:pk>/upload/api/test/", api_views.api_test, name="upload_api_test"),
     path("uploads/<int:upload_id>/table/", db_views.sqlite_pick, name="upload_sqlite"),
     path("connections/", db_views.connections, name="connections"),
     path("connections/new/", db_views.connection_edit, name="connection_new"),

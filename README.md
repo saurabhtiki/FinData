@@ -16,6 +16,10 @@ FINDATA = {
     "ALLOW_DB_CONNECT": False,                     # True = staff may save PostgreSQL / MySQL servers
     "DB_ALLOWED_HOSTS": [],                        # e.g. ["192.168.1.20"]; [] = any server
     "SQL_MAX_ROWS": 500_000, "SQL_QUERY_SECONDS": 60, "SQL_CONNECT_SECONDS": 10,
+    "ALLOW_API_FETCH": True,                       # the API tab: fetch JSON rows (GET / POST)
+    "API_BLOCK_INTERNAL": False,                   # True = refuse localhost / 10.x / 192.168.x …
+    "API_ALLOWED_HOSTS": [],                       # e.g. ["erp.local"]: allowed even when blocked
+    "API_TIMEOUT_SECONDS": 30,                     # reply size limit = DATA_CORE MAX_FILE_MB
 }
 # urls.py
 path("findata/", include("findata.urls")),

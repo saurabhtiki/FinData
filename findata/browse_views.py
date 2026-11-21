@@ -23,7 +23,7 @@ from django_datatable.datatable import (
     table_response,
 )
 
-from . import browse, conf, db_source
+from . import api_source, browse, conf
 from . import company as companies
 from . import upload as uploads
 from .models import Dataset, DatasetColumn, DbConnection, Upload
@@ -48,7 +48,7 @@ def page_context(request, dataset: Dataset, tab: str) -> dict:
     """What the dataset header and its tabs need (Data · Changes · History · Dates)."""
     saved = DbConnection.objects.filter(
         company_key=dataset.company_key, pk=dataset.remembered_source.get("connection") or 0
-    ).exists()
+    ).values_list("id", flat=True)
     return {
         "base_template": conf.get("BASE_TEMPLATE"),
         "company": request.findata_company,
@@ -57,7 +57,7 @@ def page_context(request, dataset: Dataset, tab: str) -> dict:
         "tab": tab,
         "can_upload": companies.can_upload(request),
         "can_edit": companies.can_edit_definitions(request),
-        "pull_again": saved and db_source.servers_allowed(),
+        "pull_again": api_source.again_tab(dataset, set(saved)),
     }
 
 

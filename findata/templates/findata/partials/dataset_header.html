@@ -11,7 +11,7 @@
     {% if dataset.description %}<p class="max-w-2xl text-sm text-base-content/70">{{ dataset.description }}</p>{% endif %}
   </div>
   <div class="flex flex-wrap gap-2">
-    {% if can_upload and pull_again %}<a class="btn btn-secondary btn-soft" href="{% url 'findata:upload' dataset.id %}?tab=database&amp;again=1" title="Read the same table or query from the same database as last time: type the password, then preview">Pull again</a>{% endif %}
+    {% if can_upload and pull_again == "api" %}<a class="btn btn-secondary btn-soft" href="{% url 'findata:upload' dataset.id %}?tab=api&amp;again=1" title="Ask the same API as last time: type the headers (the key), then preview">Fetch again</a>{% elif can_upload and pull_again %}<a class="btn btn-secondary btn-soft" href="{% url 'findata:upload' dataset.id %}?tab=database&amp;again=1" title="Read the same table or query from the same database as last time: type the password, then preview">Pull again</a>{% endif %}
     {% if can_upload %}<a class="btn btn-primary" href="{% url 'findata:upload' dataset.id %}" title="{% if dataset.is_snapshot %}Pick the As-of date, then upload a file or read from a database: it replaces that date only{% else %}Upload a CSV, Excel or JSON file, or read from a database: match columns, preview, then confirm{% endif %}">Upload</a>{% endif %}
   </div>
 </div>
