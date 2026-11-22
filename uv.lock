@@ -31,7 +31,7 @@ wheels = [
 [[package]]
 name = "data-core"
 version = "0.1.0"
-source = { git = "https://github.com/saurabhtiki/data-core#f322808c8026093714c9d54e8c64b9650628fc03" }
+source = { git = "https://github.com/saurabhtiki/data-core#05d4d74118801a678eaf3b4740aad4a6b65d4984" }
 dependencies = [
     { name = "django" },
     { name = "duckdb" },
